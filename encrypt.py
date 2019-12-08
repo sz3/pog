@@ -17,6 +17,9 @@ Examples:
   python ../encrypt.py /home/myfile.original > outputs.txt
   python ../encrypt.py --decrypt $(cat outputs.txt) > myfile.copy
 
+  python ../encrypt.py --encryption-keyfile=../pki.encrypt /path/to/file*
+  python ../encrypt.py --decryption-keyfile=../pki.decrypt --consume 2019-10-31T12:34:56.012345.mfn
+
 Options:
   -h --help                        Show this help.
   --version                        Show version.
@@ -24,6 +27,7 @@ Options:
   --compresslevel=<1-22>           Zstd compression level during encryption. [default: 3]
   --consume                        Used with decrypt -- after decrypting a blob, delete it from disk to conserve space.
   --decrypt                        Decrypt instead.
+  --decryption-keyfile=<filename>  Use asymmetric decryption -- <filename> contains the (binary) private key.
   --encryption-keyfile=<filename>  Use asymmetric encryption -- <filename> contains the (binary) public key.
   --keyfile=<filename>             Instead of prompting for a password, use file contents as the secret.
   --padding=<bytes>                Padding in megabytes [default: 1MB].
@@ -43,7 +47,7 @@ from subprocess import check_output
 from tempfile import TemporaryDirectory, gettempdir
 
 from nacl.secret import SecretBox as nacl_SecretBox
-from nacl.public import SealedBox as nacl_SealedBox
+from nacl.public import PrivateKey, PublicKey, SealedBox as nacl_SealedBox
 from docopt import docopt
 from humanfriendly import parse_size
 from zstd import compress, decompress
@@ -66,8 +70,21 @@ def _get_temp_dir():
             return d
 
 
-def _get_crypto_box(secret):
-    return nacl_SecretBox(secret)
+def get_asymmetric_encryption(decryption_keyfile=None, encryption_keyfile=None):
+    secret = None
+    box = None
+
+    if encryption_keyfile:
+        with open(encryption_keyfile, 'rb') as f:
+            secret = f.read()
+        box = nacl_SealedBox(PublicKey(secret))
+
+    if decryption_keyfile:
+        with open(decryption_keyfile, 'rb') as f:
+            dont_share_this_secret = f.read()
+        box = nacl_SealedBox(PrivateKey(dont_share_this_secret))
+
+    return secret, box
 
 
 def blobname(bites, secret):
@@ -113,9 +130,9 @@ class BlobStore():
 
 
 class Encryptor():
-    def __init__(self, secret, chunk_size, compresslevel, blob_store=None):
+    def __init__(self, secret, crypto_box=None, chunk_size=100000000, compresslevel=3, blob_store=None):
         self.secret = secret
-        self.box = _get_crypto_box(self.secret)
+        self.box = crypto_box or nacl_SecretBox(secret)
         self.chunk_size = chunk_size
         self.compresslevel = compresslevel
         self.blob_store = blob_store or BlobStore()
@@ -161,9 +178,8 @@ class Encryptor():
 
 
 class Decryptor():
-    def __init__(self, secret, consume=False):
-        self.secret = secret
-        self.box = _get_crypto_box(self.secret)
+    def __init__(self, secret=None, crypto_box=None, consume=False):
+        self.box = crypto_box or nacl_SecretBox(secret)
         self.consume = consume
 
     def load_manifest(self, filename):
@@ -203,13 +219,16 @@ if __name__ == '__main__':
 
     chunk_size = parse_size(args.get('--chunk-size', '100MB'))
     compresslevel = int(args.get('--compresslevel', '3'))
-    secret = get_secret(args.get('--keyfile', None))
 
-    if args['--decrypt']:
+    secret, crypto_box = get_asymmetric_encryption(args.get('--decryption-keyfile'), args.get('--encryption-keyfile'))
+    if not crypto_box and not secret:
+        secret = get_secret(args.get('--keyfile'))
+
+    if args['--decrypt'] or args.get('--decryption-keyfile'):
         consume = args['--consume']
-        d = Decryptor(secret, consume)
+        d = Decryptor(secret, crypto_box, consume)
         d.decrypt(*args['<INPUTS>'])
     else:
-        bs = BlobStore(args.get('--upload-script', None))
-        en = Encryptor(secret, chunk_size, compresslevel, bs)
+        bs = BlobStore(args.get('--upload-script'))
+        en = Encryptor(secret, crypto_box, chunk_size, compresslevel, bs)
         en.encrypt(*args['<INPUTS>'])
