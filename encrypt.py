@@ -6,7 +6,7 @@ Usage:
   encrypt.py <INPUTS>...
   encrypt.py [--keyfile=<filename> | --encryption-keyfile=<filename>] [--upload-script=<filename>] [--chunk-size=<bytes>]
              [--compresslevel=<1-22>] [--store-absolute-paths] <INPUTS>...
-  encrypt.py [--keyfile=<filename> | --decryption-keyfile=<filename>] [--decrypt] [--consume] <INPUTS>...
+  encrypt.py [--keyfile=<filename> | --decryption-keyfile=<filename>] [--decrypt | --dump-manifest] [--consume] <INPUTS>...
   encrypt.py (-h | --help)
 
 Examples:
@@ -136,11 +136,16 @@ class BlobStore():
         # allows us to skip work for already uploaded files
         return False
 
-    def upload(self, name, local_path):
+    def save(self, name, temp_path):
         if not self.upload_script:
-            copyfile(local_path, name)
+            name = path.basename(name)
+            copyfile(temp_path, name)
             return
-        check_output([self.upload_script, name, local_path])
+        check_output([self.upload_script, name, temp_path])
+
+    def save_blob(self, blob_name, temp_path):
+        full_name = 'data/{}/{}'.format(blob_name[0:2], blob_name)
+        self.save(full_name, temp_path)
 
 
 class Encryptor():
@@ -197,10 +202,13 @@ class Encryptor():
         if not filename:
             filename = '{}.mfn'.format(datetime.now().isoformat())
 
-        with open(filename, 'wb') as f:
-            file_box = self._write_header(f)
-            json_bytes = dumps(mfn).encode('utf-8')
-            f.write(file_box.encrypt(_compress(json_bytes, self.compresslevel)))
+        with TemporaryDirectory(dir=_get_temp_dir()) as tempdir:
+            temp_path = path.join(tempdir, filename)
+            with open(temp_path, 'wb') as f:
+                file_box = self._write_header(f)
+                json_bytes = dumps(mfn).encode('utf-8')
+                f.write(file_box.encrypt(_compress(json_bytes, self.compresslevel)))
+            self.blob_store.save(filename, temp_path)
 
     def encrypt_single_file(self, filename):
         cctx = zstd.ZstdCompressor(level=self.compresslevel)
@@ -213,21 +221,21 @@ class Encryptor():
                 blob_name = blobname(data, self.secret).decode('utf-8')
                 if self.blob_store.exists(blob_name):
                     continue
-                target = path.join(tempdir, blob_name)
-                with open(target, 'wb') as out:
+                temp_path = path.join(tempdir, blob_name)
+                with open(temp_path, 'wb') as out:
                     blob_box = self._write_header(out)
                     data = self._pad_data(data)
                     out.write(blob_box.encrypt(data))
-                yield target
+                yield temp_path
 
     def encrypt(self, *inputs):
         mfn = dict()
         for filename in inputs:
             print('*** {}:'.format(filename), file=sys.stderr)
             outputs = []
-            for blob_path in self.encrypt_single_file(filename):
-                blob_name = path.basename(blob_path)
-                self.blob_store.upload(blob_name, blob_path)
+            for temp_path in self.encrypt_single_file(filename):
+                blob_name = path.basename(temp_path)
+                self.blob_store.save_blob(blob_name, temp_path)
                 outputs.append(blob_name)
                 print(blob_name)
             if outputs:
@@ -265,6 +273,15 @@ class Decryptor():
         if self.consume:
             remove(filename)
 
+    def dump_manifest(self, *inputs):
+        for filename in inputs:
+            print('*** {}:'.format(filename), file=sys.stderr)
+            mfn = self.load_manifest(filename)
+            for og_filename, info in mfn.items():
+                print('* {}:'.format(og_filename), file=sys.stderr)
+                for blob in info['blobs']:
+                    print(blob)
+
     def decrypt(self, *inputs):
         for filename in inputs:
             decompressor = zstd.ZstdDecompressor()
@@ -298,10 +315,14 @@ if __name__ == '__main__':
     if not crypto_box and not secret:
         secret = get_secret(args.get('--keyfile'))
 
-    if args['--decrypt'] or args.get('--decryption-keyfile'):
+    decrypt = args['--decrypt'] or args['--dump-manifest'] or args.get('--decryption-keyfile')
+    if decrypt:
         consume = args['--consume']
         d = Decryptor(secret, crypto_box, consume)
-        d.decrypt(*args['<INPUTS>'])
+        if args['--dump-manifest']:
+            d.dump_manifest(*args['<INPUTS>'])
+        else:
+            d.decrypt(*args['<INPUTS>'])
     else:
         bs = BlobStore(args.get('--upload-script'))
         en = Encryptor(secret, crypto_box, chunk_size, compresslevel, store_absolute_paths, bs)
