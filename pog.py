@@ -1,26 +1,27 @@
 #!/usr/bin/python3
 
-"""Encryptor
+"""Pretty Ok Gncryption
+(the G is silent)
 
 Usage:
-  encrypt.py <INPUTS>...
-  encrypt.py [--keyfile=<filename> | --encryption-keyfile=<filename>] [--upload-script=<filename>] [--chunk-size=<bytes>]
+  pog.py <INPUTS>...
+  pog.py [--keyfile=<filename> | --encryption-keyfile=<filename>] [--upload-script=<filename>] [--chunk-size=<bytes>]
              [--compresslevel=<1-22>] [--store-absolute-paths] <INPUTS>...
-  encrypt.py [--keyfile=<filename> | --decryption-keyfile=<filename>] [--decrypt | --dump-manifest] [--consume] <INPUTS>...
-  encrypt.py [--keyfile=<filename> | --decryption-keyfile=<filename> | --encryption-keyfile=<filename>] [--dump-manifest-index] <INPUTS>...
-  encrypt.py (-h | --help)
+  pog.py [--keyfile=<filename> | --decryption-keyfile=<filename>] [--decrypt | --dump-manifest] [--consume] <INPUTS>...
+  pog.py [--keyfile=<filename> | --decryption-keyfile=<filename> | --encryption-keyfile=<filename>] [--dump-manifest-index] <INPUTS>...
+  pog.py (-h | --help)
 
 Examples:
-  python ../encrypt.py /path/to/file1 /path/to/file2 ...
-  python ../encrypt.py --chunk-size=50MB bigfile
-  python ../encrypt.py --decrypt 2019-10-31T12:34:56.012345.mfn
+  python ../pog.py /path/to/file1 /path/to/file2 ...
+  python ../pog.py --chunk-size=50MB bigfile
+  python ../pog.py --decrypt 2019-10-31T12:34:56.012345.mfn
 
-  python ../encrypt.py /home/myfile.original > outputs.txt
-  python ../encrypt.py --decrypt $(cat outputs.txt) > myfile.copy
+  python ../pog.py /home/myfile.original > outputs.txt
+  python ../pog.py --decrypt $(cat outputs.txt) > myfile.copy
 
-  python ../encrypt.py --encryption-keyfile=../pki.encrypt /path/to/file*
-  python ../encrypt.py --decryption-keyfile=../pki.decrypt --consume 2019-10-31T12:34:56.012345.mfn
-  python ../encrypt.py --encryption-keyfile=../pki.encrypt --dump-manifest-index 2019-*
+  python ../pog.py --encryption-keyfile=../pki.encrypt /path/to/file*
+  python ../pog.py --decryption-keyfile=../pki.decrypt --consume 2019-10-31T12:34:56.012345.mfn
+  python ../pog.py --encryption-keyfile=../pki.encrypt --dump-manifest-index 2019-*
 
 Options:
   -h --help                        Show this help.

@@ -1,0 +1,11 @@
+#!/bin/bash
+
+NAME=$1
+LOCAL_PATH=$2
+
+file_exists=$(b2 list-file-versions YOUR_BUCKET_NAME_HERE $NAME | grep "$NAME")
+if [[ -z "$file_exists" ]]; then
+   b2 upload_file YOUR_BUCKET_NAME_HERE $LOCAL_PATH $NAME
+fi
+
+
