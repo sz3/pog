@@ -17,8 +17,8 @@ class TestDirMixin():
     def setUp(self):
         self.temp_dir = TemporaryDirectory()
         mkdir(path.join(self.temp_dir.name, 'inputs'))
-        self.sample = path.join(self.temp_dir.name, 'inputs', 'sample.txt')
-        with open(self.sample, 'wb') as f:
+        self.tiny_sample = path.join(self.temp_dir.name, 'inputs', 'tiny_sample.txt')
+        with open(self.tiny_sample, 'wb') as f:
             f.write(b'aaaabbbb')
         super().setUp()
 
@@ -39,16 +39,18 @@ class TestDirMixin():
 class KeyfileTest(TestDirMixin, TestCase):
     def test_round_trip(self):
         # encrypt our sample file
-        enc = self.run_command(f'--keyfile={CODE_DIR}/test/only_for_testing.encrypt', self.sample)
+        enc = self.run_command(f'--keyfile={CODE_DIR}/test/samples/only_for_testing.encrypt', self.tiny_sample)
         self.assertEqual(enc, ['Fx1xB8L8L1cRPdBzkr-L8mzPusnzEBjhrQseB3DaCU4='])
 
         # check that the manifest looks good
         manifest_name = glob(path.join(self.temp_dir.name, '*.mfn'))[0]
-        show_mfn = self.run_command(f'--keyfile={CODE_DIR}/test/only_for_testing.encrypt', '--dump-manifest', manifest_name)
+        show_mfn = self.run_command(f'--keyfile={CODE_DIR}/test/samples/only_for_testing.encrypt', '--dump-manifest', manifest_name)
         self.assertEqual(show_mfn, enc)
 
         # check the index as well
-        show_mfn_index = self.run_command(f'--keyfile={CODE_DIR}/test/only_for_testing.encrypt', '--dump-manifest-index', manifest_name)
+        show_mfn_index = self.run_command(
+            f'--keyfile={CODE_DIR}/test/samples/only_for_testing.encrypt', '--dump-manifest-index', manifest_name
+        )
         self.assertEqual(show_mfn_index, enc)
 
         # check that we have what we want for decryption
@@ -56,23 +58,25 @@ class KeyfileTest(TestDirMixin, TestCase):
         self.assertEqual(paths, [path.basename(manifest_name)] + enc + ['inputs'])
 
         # decrypt, consuming our encrypted inputs
-        dec = self.run_command(f'--keyfile={CODE_DIR}/test/only_for_testing.encrypt', '--decrypt', '--consume', manifest_name)
+        dec = self.run_command(f'--keyfile={CODE_DIR}/test/samples/only_for_testing.encrypt', '--decrypt', '--consume', manifest_name)
         self.assertEqual(dec, [''])
 
         # read the decrypted file
-        with open(path.join(self.temp_dir.name, 'sample.txt')) as f:
+        with open(self.tiny_sample) as f:
             contents = f.read()
         self.assertEqual(contents, 'aaaabbbb')
 
         # validate the directory looks like we expect it to
         paths = sorted(listdir(self.temp_dir.name))
-        self.assertEqual(paths, ['inputs', 'sample.txt'])
+        self.assertEqual(paths, ['inputs', 'tiny_sample.txt'])
 
     def test_consistency(self):
         # regression test for our header/encryption format -- try to decrypt a known file
         with open(path.join(self.temp_dir.name, 'out.txt'), 'wb') as f:
-            dec = self.run_command(f'--keyfile={CODE_DIR}/test/only_for_testing.encrypt', '--decrypt',
-                                   f'{CODE_DIR}/test/US-1DnY1AVF1huiGj10G9SEGwCHa4GVxJcBnaCuAcXk=', stdout=f)
+            dec = self.run_command(
+                f'--keyfile={CODE_DIR}/test/samples/only_for_testing.encrypt', '--decrypt',
+                f'{CODE_DIR}/test/samples/US-1DnY1AVF1huiGj10G9SEGwCHa4GVxJcBnaCuAcXk=', stdout=f
+            )
             self.assertEqual(dec, 0)
 
         # read the decrypted file
@@ -84,10 +88,11 @@ class KeyfileTest(TestDirMixin, TestCase):
         # regression test with manifest as well
         # copy over relevant files first
         for filename in ['US-1DnY1AVF1huiGj10G9SEGwCHa4GVxJcBnaCuAcXk=', 'keyfile-sample.mfn']:
-            copyfile(f'{CODE_DIR}/test/{filename}', f'{self.temp_dir.name}/{filename}')
+            copyfile(f'{CODE_DIR}/test/samples/{filename}', f'{self.temp_dir.name}/{filename}')
 
 
-        dec = self.run_command(f'--keyfile={CODE_DIR}/test/only_for_testing.encrypt', '--decrypt', '--consume', 'keyfile-sample.mfn')
+        dec = self.run_command(f'--keyfile={CODE_DIR}/test/samples/only_for_testing.encrypt', '--decrypt', '--consume',
+                               'keyfile-sample.mfn')
         self.assertEqual(dec, [''])
 
         # read the decrypted file
@@ -99,16 +104,20 @@ class KeyfileTest(TestDirMixin, TestCase):
 class AsymmetricCryptoTest(TestDirMixin, TestCase):
     def test_asymmetric_round_trip(self):
         # encrypt our sample file
-        enc = self.run_command(f'--encryption-keyfile={CODE_DIR}/test/only_for_testing.encrypt', self.sample)
+        enc = self.run_command(f'--encryption-keyfile={CODE_DIR}/test/samples/only_for_testing.encrypt', self.tiny_sample)
         self.assertEqual(enc, ['p6VsgAeMwIwCGbnuZ7lZqRPX-Ur0pT3nwsoKX2mp3Bo='])
 
         # check that the manifest looks good
         manifest_name = glob(path.join(self.temp_dir.name, '*.mfn'))[0]
-        show_mfn = self.run_command(f'--decryption-keyfile={CODE_DIR}/test/only_for_testing.decrypt', '--dump-manifest', manifest_name)
+        show_mfn = self.run_command(
+            f'--decryption-keyfile={CODE_DIR}/test/samples/only_for_testing.decrypt', '--dump-manifest', manifest_name
+        )
         self.assertEqual(show_mfn, enc)
 
         # check the index as well
-        show_mfn_index = self.run_command(f'--encryption-keyfile={CODE_DIR}/test/only_for_testing.encrypt', '--dump-manifest-index', manifest_name)
+        show_mfn_index = self.run_command(
+            f'--encryption-keyfile={CODE_DIR}/test/samples/only_for_testing.encrypt', '--dump-manifest-index', manifest_name
+        )
         self.assertEqual(show_mfn_index, enc)
 
         # check that we have what we want for decryption
@@ -116,23 +125,24 @@ class AsymmetricCryptoTest(TestDirMixin, TestCase):
         self.assertEqual(paths, [path.basename(manifest_name), 'inputs'] + enc)
 
         # decrypt, consuming our encrypted inputs
-        dec = self.run_command(f'--decryption-keyfile={CODE_DIR}/test/only_for_testing.decrypt', '--consume', manifest_name)
+        dec = self.run_command(f'--decryption-keyfile={CODE_DIR}/test/samples/only_for_testing.decrypt', '--consume', manifest_name)
         self.assertEqual(dec, [''])
 
         # read the decrypted file
-        with open(path.join(self.temp_dir.name, 'sample.txt')) as f:
+        with open(self.tiny_sample) as f:
             contents = f.read()
         self.assertEqual(contents, 'aaaabbbb')
 
         # validate the directory looks like we expect it to
         paths = sorted(listdir(self.temp_dir.name))
-        self.assertEqual(paths, ['inputs', 'sample.txt'])
+        self.assertEqual(paths, ['inputs', 'tiny_sample.txt'])
 
     def test_consistency(self):
         # regression test for our header/encryption format -- try to decrypt a known file
         with open(path.join(self.temp_dir.name, 'out.txt'), 'wb') as f:
-            dec = self.run_command(f'--decryption-keyfile={CODE_DIR}/test/only_for_testing.decrypt',
-                                   f'{CODE_DIR}/test/hq3mhX2mG_i_aVy2wv6jMGC5DjlerpvJ8O1Y_iayfPY=', stdout=f)
+            dec = self.run_command(
+                f'--decryption-keyfile={CODE_DIR}/test/samples/only_for_testing.decrypt',
+                f'{CODE_DIR}/test/samples/hq3mhX2mG_i_aVy2wv6jMGC5DjlerpvJ8O1Y_iayfPY=', stdout=f)
             self.assertEqual(dec, 0)
 
         # read the decrypted file
@@ -144,10 +154,12 @@ class AsymmetricCryptoTest(TestDirMixin, TestCase):
         # regression test with manifest as well
         # copy over relevant files first
         for filename in ['hq3mhX2mG_i_aVy2wv6jMGC5DjlerpvJ8O1Y_iayfPY=', 'asymmetric-sample.mfn']:
-            copyfile(f'{CODE_DIR}/test/{filename}', f'{self.temp_dir.name}/{filename}')
+            copyfile(f'{CODE_DIR}/test/samples/{filename}', f'{self.temp_dir.name}/{filename}')
 
 
-        dec = self.run_command(f'--decryption-keyfile={CODE_DIR}/test/only_for_testing.decrypt', '--consume', 'asymmetric-sample.mfn')
+        dec = self.run_command(
+            f'--decryption-keyfile={CODE_DIR}/test/samples/only_for_testing.decrypt', '--consume', 'asymmetric-sample.mfn'
+        )
         self.assertEqual(dec, [''])
 
         # read the decrypted file
