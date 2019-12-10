@@ -1,11 +1,16 @@
 from glob import glob
 from os import path, mkdir, listdir
-from subprocess import check_output
+from shutil import copyfile
+from subprocess import check_output, call as subprocess_call
 from tempfile import TemporaryDirectory
 from unittest import TestCase
 
 
 CODE_DIR = path.abspath(path.join(path.dirname(path.realpath(__file__)), '..'))
+
+SAMPLE_TEXT = b'''069:15:22 Lovell (onboard): Hey, I don't see a thing. Where are we?
+069:15:24 Anders (onboard): It looks like a big - looks like a big beach down there.
+'''
 
 
 class TestDirMixin():
@@ -22,9 +27,13 @@ class TestDirMixin():
         with self.temp_dir:
             pass
 
-    def run_command(self, *args):
+    def run_command(self, *args, **kwargs):
         full_args = ['python', f'{CODE_DIR}/pog.py'] + list(args)
-        return check_output(full_args, cwd=self.temp_dir.name).strip().decode('utf-8').split('\n')
+
+        if kwargs.get('stdout'):
+            return subprocess_call(full_args, cwd=self.temp_dir.name, **kwargs)
+
+        return check_output(full_args, cwd=self.temp_dir.name, **kwargs).strip().decode('utf-8').split('\n')
 
 
 class KeyfileTest(TestDirMixin, TestCase):
@@ -59,6 +68,33 @@ class KeyfileTest(TestDirMixin, TestCase):
         paths = sorted(listdir(self.temp_dir.name))
         self.assertEqual(paths, ['inputs', 'sample.txt'])
 
+    def test_consistency(self):
+        # regression test for our header/encryption format -- try to decrypt a known file
+        with open(path.join(self.temp_dir.name, 'out.txt'), 'wb') as f:
+            dec = self.run_command(f'--keyfile={CODE_DIR}/test/only_for_testing.encrypt', '--decrypt',
+                                   f'{CODE_DIR}/test/US-1DnY1AVF1huiGj10G9SEGwCHa4GVxJcBnaCuAcXk=', stdout=f)
+            self.assertEqual(dec, 0)
+
+        # read the decrypted file
+        with open(path.join(self.temp_dir.name, 'out.txt'), 'rb') as f:
+            contents = f.read()
+        self.assertEqual(contents, SAMPLE_TEXT)
+
+    def test_consistency_with_manifest(self):
+        # regression test with manifest as well
+        # copy over relevant files first
+        for filename in ['US-1DnY1AVF1huiGj10G9SEGwCHa4GVxJcBnaCuAcXk=', 'keyfile-sample.mfn']:
+            copyfile(f'{CODE_DIR}/test/{filename}', f'{self.temp_dir.name}/{filename}')
+
+
+        dec = self.run_command(f'--keyfile={CODE_DIR}/test/only_for_testing.encrypt', '--decrypt', '--consume', 'keyfile-sample.mfn')
+        self.assertEqual(dec, [''])
+
+        # read the decrypted file
+        with open(path.join(self.temp_dir.name, '8.txt'), 'rb') as f:
+            contents = f.read()
+        self.assertEqual(contents, SAMPLE_TEXT)
+
 
 class AsymmetricCryptoTest(TestDirMixin, TestCase):
     def test_asymmetric_round_trip(self):
@@ -91,3 +127,30 @@ class AsymmetricCryptoTest(TestDirMixin, TestCase):
         # validate the directory looks like we expect it to
         paths = sorted(listdir(self.temp_dir.name))
         self.assertEqual(paths, ['inputs', 'sample.txt'])
+
+    def test_consistency(self):
+        # regression test for our header/encryption format -- try to decrypt a known file
+        with open(path.join(self.temp_dir.name, 'out.txt'), 'wb') as f:
+            dec = self.run_command(f'--decryption-keyfile={CODE_DIR}/test/only_for_testing.decrypt',
+                                   f'{CODE_DIR}/test/hq3mhX2mG_i_aVy2wv6jMGC5DjlerpvJ8O1Y_iayfPY=', stdout=f)
+            self.assertEqual(dec, 0)
+
+        # read the decrypted file
+        with open(path.join(self.temp_dir.name, 'out.txt'), 'rb') as f:
+            contents = f.read()
+        self.assertEqual(contents, SAMPLE_TEXT)
+
+    def test_consistency_with_manifest(self):
+        # regression test with manifest as well
+        # copy over relevant files first
+        for filename in ['hq3mhX2mG_i_aVy2wv6jMGC5DjlerpvJ8O1Y_iayfPY=', 'asymmetric-sample.mfn']:
+            copyfile(f'{CODE_DIR}/test/{filename}', f'{self.temp_dir.name}/{filename}')
+
+
+        dec = self.run_command(f'--decryption-keyfile={CODE_DIR}/test/only_for_testing.decrypt', '--consume', 'asymmetric-sample.mfn')
+        self.assertEqual(dec, [''])
+
+        # read the decrypted file
+        with open(path.join(self.temp_dir.name, '8.txt'), 'rb') as f:
+            contents = f.read()
+        self.assertEqual(contents, SAMPLE_TEXT)
