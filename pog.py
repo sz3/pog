@@ -378,7 +378,7 @@ class Decryptor():
                     remove(filename)
             else:
                 with decompressor.stream_writer(_stdout()) as decompress_out:
-                    self.decrypt_single_file(filename, out=decompress_out)
+                    self.decrypt_single_blob(filename, out=decompress_out)
 
 
 if __name__ == '__main__':
