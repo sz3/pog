@@ -12,16 +12,16 @@ Usage:
   pog.py (-h | --help)
 
 Examples:
-  python ../pog.py /path/to/file1 /path/to/file2 ...
-  python ../pog.py --chunk-size=50MB bigfile
-  python ../pog.py --decrypt 2019-10-31T12:34:56.012345.mfn
+  python -m pog /path/to/file1 /path/to/file2 ...
+  python -m pog --chunk-size=50MB bigfile
+  python -m pog --decrypt 2019-10-31T12:34:56.012345.mfn
 
-  python ../pog.py /home/myfile.original > outputs.txt
-  python ../pog.py --decrypt $(cat outputs.txt) > myfile.copy
+  python -m pog /home/myfile.original > outputs.txt
+  python -m pog --decrypt $(cat outputs.txt) > myfile.copy
 
-  python ../pog.py --encryption-keyfile=../pki.encrypt /path/to/file*
-  python ../pog.py --decryption-keyfile=../pki.decrypt --consume 2019-10-31T12:34:56.012345.mfn
-  python ../pog.py --encryption-keyfile=../pki.encrypt --dump-manifest-index 2019-*
+  python -m pog --encryption-keyfile=pki.encrypt /path/to/file*
+  python -m pog --decryption-keyfile=pki.decrypt --consume 2019-10-31T12:34:56.012345.mfn
+  python -m pog --encryption-keyfile=pki.encrypt --dump-manifest-index 2019-*
 
 Options:
   -h --help                        Show this help.

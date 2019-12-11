@@ -1,7 +1,7 @@
 import hashlib
 import random
 from glob import glob
-from os import environ, path, listdir
+from os import environ, path, listdir, utime
 from shutil import copyfile
 from subprocess import check_output, call as subprocess_call
 from tempfile import TemporaryDirectory
@@ -13,6 +13,9 @@ CODE_DIR = path.abspath(path.join(path.dirname(path.realpath(__file__)), '..'))
 SAMPLE_TEXT = b'''069:15:22 Lovell (onboard): Hey, I don't see a thing. Where are we?
 069:15:24 Anders (onboard): It looks like a big - looks like a big beach down there.
 '''
+
+SAMPLE_TIME1 = 1552604385.2789645
+SAMPLE_TIME2 = 1358637058.0
 
 
 def compute_checksum(filename):
@@ -41,13 +44,16 @@ def make_big_file(filename):
 class TestDirMixin():
     def setUp(self):
         self.input_dir = TemporaryDirectory()
+
         self.tiny_sample = path.join(self.input_dir.name, 'tiny_sample.txt')
         with open(self.tiny_sample, 'wb') as f:
             f.write(b'aaaabbbb')
+        utime(self.tiny_sample, times=(SAMPLE_TIME1, SAMPLE_TIME1))
 
         self.another_sample = path.join(self.input_dir.name, 'another_sample.txt')
         with open(self.another_sample, 'wb') as f:
             f.write(b'0123456789')
+        utime(self.another_sample, times=(SAMPLE_TIME2, SAMPLE_TIME2))
 
         self.working_dir = TemporaryDirectory()
         super().setUp()
@@ -103,13 +109,19 @@ class KeyfileTest(TestDirMixin, TestCase):
         self.assertCountEqual(paths, ['another_sample.txt', 'tiny_sample.txt'])
 
         # read the decrypted files
-        with open(path.join(self.working_dir.name, 'tiny_sample.txt')) as f:
+        tiny_sample = path.join(self.working_dir.name, 'tiny_sample.txt')
+        with open(tiny_sample) as f:
             contents = f.read()
         self.assertEqual(contents, 'aaaabbbb')
 
-        with open(path.join(self.working_dir.name, 'another_sample.txt')) as f:
+        another_sample = path.join(self.working_dir.name, 'another_sample.txt')
+        with open(another_sample) as f:
             contents = f.read()
         self.assertEqual(contents, '0123456789')
+
+        # check file metadata
+        self.assertEqual(path.getmtime(tiny_sample), SAMPLE_TIME1)
+        self.assertEqual(path.getmtime(another_sample), SAMPLE_TIME2)
 
     def test_consistency(self):
         # regression test for our header/encryption format -- try to decrypt a known file
