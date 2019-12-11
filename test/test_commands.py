@@ -26,18 +26,15 @@ def compute_checksum(filename):
 def make_big_file(filename):
     # idea is to deterministically generate a poorly-compressable stream.
     # we'll rely on a constant random.seed() until python decides to change the impl
+    random.seed(1234)
     hash_md5 = hashlib.md5()
 
     with open(filename, 'wb') as f:
-        random.seed(1234)
-        remaining_size = 110000000  # ~110 MB ... default chunk size is 100MB
         chunk_size = 100000
-        while remaining_size > 0:
+        for _ in range(110000000 // chunk_size):  # ~110 MB ... default chunk size is 100MB
             chunk = bytearray(random.getrandbits(8) for _ in range(chunk_size))
             f.write(chunk)
             hash_md5.update(chunk)
-            remaining_size -= chunk_size
-
     return hash_md5.hexdigest()
 
 
@@ -71,7 +68,7 @@ class TestDirMixin():
 
 class KeyfileTest(TestDirMixin, TestCase):
     def test_round_trip(self):
-        # encrypt our sample file
+        # encrypt our sample files
         enc = self.run_command(f'--keyfile={CODE_DIR}/test/samples/only_for_testing.encrypt', self.tiny_sample, self.another_sample)
         self.assertEqual(enc, [
             'Fx1xB8L8L1cRPdBzkr-L8mzPusnzEBjhrQseB3DaCU4=',
@@ -101,10 +98,14 @@ class KeyfileTest(TestDirMixin, TestCase):
         paths = sorted(listdir(self.working_dir.name))
         self.assertEqual(paths, ['another_sample.txt', 'tiny_sample.txt'])
 
-        # read the decrypted file
+        # read the decrypted files
         with open(path.join(self.working_dir.name, 'tiny_sample.txt')) as f:
             contents = f.read()
         self.assertEqual(contents, 'aaaabbbb')
+
+        with open(path.join(self.working_dir.name, 'another_sample.txt')) as f:
+            contents = f.read()
+        self.assertEqual(contents, '0123456789')
 
     def test_consistency(self):
         # regression test for our header/encryption format -- try to decrypt a known file
@@ -135,10 +136,44 @@ class KeyfileTest(TestDirMixin, TestCase):
             contents = f.read()
         self.assertEqual(contents, SAMPLE_TEXT)
 
+    def test_absolute_paths(self):
+        # encrypt our sample files, saving their absolute paths in the manifest
+        enc = self.run_command(
+            f'--keyfile={CODE_DIR}/test/samples/only_for_testing.encrypt', self.tiny_sample, self.another_sample, '--store-absolute-paths'
+        )
+        self.assertEqual(enc, [
+            'Fx1xB8L8L1cRPdBzkr-L8mzPusnzEBjhrQseB3DaCU4=',
+            'vyGFr38Y8A0xhonhxuiZXkjS8vIVjY6VDH0-BiLJuXo=',
+        ])
+
+        # check that the manifest looks good
+        manifest_name = glob(path.join(self.working_dir.name, '*.mfn'))[0]
+        show_mfn = self.run_command(f'--keyfile={CODE_DIR}/test/samples/only_for_testing.encrypt', '--dump-manifest', manifest_name)
+        self.assertEqual(show_mfn, enc)
+
+        # decrypt, consuming our encrypted inputs
+        dec = self.run_command(f'--keyfile={CODE_DIR}/test/samples/only_for_testing.encrypt', '--decrypt', '--consume', manifest_name)
+        self.assertEqual(dec, [''])
+
+        # validate the directory looks like we expect it to
+        # since we saved the absolute paths, our expected full path will be... interesting
+        full_exploded_path = path.abspath(self.working_dir.name + self.input_dir.name)
+        paths = sorted(listdir(full_exploded_path))
+        self.assertEqual(paths, ['another_sample.txt', 'tiny_sample.txt'])
+
+        # read the decrypted files
+        with open(path.join(full_exploded_path, 'tiny_sample.txt')) as f:
+            contents = f.read()
+        self.assertEqual(contents, 'aaaabbbb')
+
+        with open(path.join(full_exploded_path, 'another_sample.txt')) as f:
+            contents = f.read()
+        self.assertEqual(contents, '0123456789')
+
 
 class AsymmetricCryptoTest(TestDirMixin, TestCase):
     def test_asymmetric_round_trip(self):
-        # encrypt our sample file
+        # encrypt our sample files
         enc = self.run_command(f'--encryption-keyfile={CODE_DIR}/test/samples/only_for_testing.encrypt', self.tiny_sample, self.another_sample)
         self.assertEqual(enc, [
             'p6VsgAeMwIwCGbnuZ7lZqRPX-Ur0pT3nwsoKX2mp3Bo=',
@@ -170,11 +205,14 @@ class AsymmetricCryptoTest(TestDirMixin, TestCase):
         paths = sorted(listdir(self.working_dir.name))
         self.assertEqual(paths, ['another_sample.txt', 'tiny_sample.txt'])
 
-        # read the decrypted file
+        # read the decrypted files
         with open(path.join(self.working_dir.name, 'tiny_sample.txt')) as f:
             contents = f.read()
         self.assertEqual(contents, 'aaaabbbb')
 
+        with open(path.join(self.working_dir.name, 'another_sample.txt')) as f:
+            contents = f.read()
+        self.assertEqual(contents, '0123456789')
 
     def test_consistency(self):
         # regression test for our header/encryption format -- try to decrypt a known file
