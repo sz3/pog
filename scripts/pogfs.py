@@ -12,5 +12,5 @@ class Pogfs:
     def remove_file(self, remote_path):
         raise NotImplementedError()
 
-    def list_files(self, remote_path, recursive=False):
+    def list_files(self, remote_path='', recursive=True):
         raise NotImplementedError()

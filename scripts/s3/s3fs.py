@@ -31,5 +31,9 @@ class s3fs(Pogfs):
     def remove_file(self, remote_path):
         raise NotImplementedError()
 
-    def list_files(self, remote_path, recursive=False):
-        raise NotImplementedError()
+    def list_files(self, remote_path='', recursive=True):
+        s3 = boto3.client('s3')
+        pag = s3.get_paginator("list_objects_v2")
+        for p in pag.paginate(Bucket=self.bucket_name, Prefix=remote_path):
+            for e in p.get('Contents', []):
+                yield e['Key']

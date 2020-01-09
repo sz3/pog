@@ -7,9 +7,10 @@ from ..pogfs import Pogfs
 BUCKET_NAME = environ.get('B2_BUCKET_NAME')
 
 
-def _run_command(self, *args, **kwargs):
-    full_args = ['echo', 'b2'] + list(args)
-    return check_output(full_args, **kwargs).strip().decode('utf-8')
+def _run_command(*args, **kwargs):
+    full_args = ['b2'] + list(args)
+    outputs = check_output(full_args, **kwargs).strip()
+    return outputs.decode('utf-8')
 
 
 '''
@@ -19,12 +20,16 @@ It's also marginally easier to use.
 It would be nice if B2 had a better api.
 '''
 class b2fs(Pogfs):
+    def __init__(self, bucket_name=None):
+        self.bucket_name = bucket_name or BUCKET_NAME
+
     def exists(self, remote_path):
-        res = _run_command('list-file-names', BUCKET_NAME, remote_path, 1)
-        print(res)
+        res = _run_command('list-file-names', self.bucket_name, remote_path, '1')
+        test_str = '"fileName": "{}"'.format(remote_path)
+        return test_str in res
 
     def download_file(self, remote_path, local_path):
-        res = _run_command('download-file-by-name', BUCKET_NAME, remote_path, local_path)
+        res = _run_command('download-file-by-name', self.bucket_name, remote_path, local_path)
         print(res)
 
     def remove_file(self, remote_path):
@@ -34,8 +39,11 @@ class b2fs(Pogfs):
         res = _run_command('delete-file-version', remote_path, file_id)
         print(res)
 
-    def list_files(self, remote_path, recursive=False):
+    def list_files(self, remote_path='', recursive=True):
         # maybe handle wildcards too... e.g. "*.mfn"
         recursive_flag = '--recursive' if recursive else ''
-        res = _run_command('ls', recursive_flag, BUCKET_NAME, remote_path)
-        print(res)
+        path_args = [remote_path] if remote_path else []
+        res = _run_command('ls', recursive_flag, self.bucket_name, *path_args)
+        if not res:
+            return []
+        return res.split()
