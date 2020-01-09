@@ -1,4 +1,5 @@
 #!/bin/bash
+# uses `b2` package
 
 if [[ -z "$B2_BUCKET_NAME" ]]; then
    echo "need to specify bucket name!"
