@@ -249,7 +249,7 @@ class Encryptor():
             with open(temp_path, 'wb') as f:
                 # store mfn index if needed
                 if self.box != self.index_box:
-                    all_blobs = list(self._mfn_get_all_blobs(mfn))
+                    all_blobs = sorted(list(self._mfn_get_all_blobs(mfn)))
                     index_bytes = dumps(all_blobs).encode('utf-8')
                     self._write(f, _compress(index_bytes, self.compresslevel), manifest_index=True)
 
