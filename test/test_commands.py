@@ -3,7 +3,7 @@ import random
 from glob import glob
 from os import environ, path, listdir, utime
 from shutil import copyfile
-from subprocess import check_output, call as subprocess_call
+from subprocess import check_output, call as subprocess_call, STDOUT
 from tempfile import TemporaryDirectory
 from unittest import TestCase, skipUnless
 
@@ -149,6 +149,20 @@ class KeyfileTest(TestDirMixin, TestCase):
         with open(path.join(self.working_dir.name, '8.txt'), 'rb') as f:
             contents = f.read()
         self.assertEqual(contents, SAMPLE_TEXT)
+
+    def test_consistency_stderr(self):
+        # test for stdout/stderr formatting
+        # relevant for correlating which blobs belong to which files
+        # copy over relevant files first
+        for filename in [self.consistency_mfn]:
+            copyfile(f'{CODE_DIR}/test/samples/{filename}', f'{self.working_dir.name}/{filename}')
+
+        show_mfn = self.run_command(self.decryption_flag, '--dump-manifest', self.consistency_mfn, stderr=STDOUT)
+        self.assertEqual(show_mfn, [
+            '*** {}:'.format(self.consistency_mfn),
+            '* {}:'.format('8.txt'),
+            self.consistency_blobname,
+        ])
 
     def test_absolute_paths(self):
         # encrypt our sample files, saving their absolute paths in the manifest
