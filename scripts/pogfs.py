@@ -6,7 +6,10 @@ class Pogfs:
     def exists(self, remote_path):
         raise NotImplementedError()
 
-    def download_file(self, remote_path, local_path):
+    def upload_file(self, local_path, remote_path):
+        raise NotImplementedError()
+
+    def download_file(self, local_path, remote_path):
         raise NotImplementedError()
 
     def remove_file(self, remote_path):

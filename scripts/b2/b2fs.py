@@ -1,3 +1,4 @@
+import re
 from os import environ
 from subprocess import check_output
 
@@ -24,11 +25,25 @@ class b2fs(Pogfs):
         self.bucket_name = bucket_name or BUCKET_NAME
 
     def exists(self, remote_path):
-        res = _run_command('list-file-names', self.bucket_name, remote_path, '1')
-        test_str = '"fileName": "{}"'.format(remote_path)
-        return test_str in res
+        res = _run_command('list-file-names', self.bucket_name, remote_path, '1').split('\n')
 
-    def download_file(self, remote_path, local_path):
+        test_str = '"fileName": "{}"'.format(remote_path)
+        success = False
+        fileId = ''
+
+        for line in res:
+            if '"fileId"' in line:
+                matches = re.findall(r'\"(.+?)\"', line)
+                fileId = matches[1]
+            if test_str in line:
+                success = True
+        return fileId if success else ''
+
+    def upload_file(self, local_path, remote_path):
+        res = _run_command('upload_file', self.bucket_name, local_path, remote_path)
+        print(res)
+
+    def download_file(self, local_path, remote_path):
         res = _run_command('download-file-by-name', self.bucket_name, remote_path, local_path)
         print(res)
 

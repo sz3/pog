@@ -24,7 +24,11 @@ class s3fs(Pogfs):
             else:
                 raise
 
-    def download_file(self, remote_path, local_path):
+    def upload_file(self, local_path, remote_path):
+        s3 = boto3.client('s3')
+        s3.upload_file(local_path, self.bucket_name, remote_path)
+
+    def download_file(self, local_path, remote_path):
         s3 = boto3.client('s3')
         s3.download_file(self.bucket_name, remote_path, local_path)
 
