@@ -3,7 +3,7 @@ from os import environ
 import boto3
 from botocore.exceptions import ClientError
 
-from ..pogfs import Pogfs
+from .pogfs import Pogfs
 
 
 BUCKET_NAME = environ.get('S3_BUCKET_NAME')

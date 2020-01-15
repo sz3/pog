@@ -5,7 +5,7 @@
 
 Usage:
   pog.py <INPUTS>...
-  pog.py [--keyfile=<filename> | --encryption-keyfile=<filename>] [--upload-script=<filename>] [--chunk-size=<bytes>]
+  pog.py [--keyfile=<filename> | --encryption-keyfile=<filename>] [--save-to=<b2|s3|filename|...>] [--chunk-size=<bytes>]
          [--compresslevel=<1-22>] [--store-absolute-paths] <INPUTS>...
   pog.py [--keyfile=<filename> | --decryption-keyfile=<filename>] [--decrypt | --dump-manifest] [--consume] <INPUTS>...
   pog.py [--keyfile=<filename> | --decryption-keyfile=<filename> | --encryption-keyfile=<filename>] [--dump-manifest-index] <INPUTS>...
@@ -34,7 +34,8 @@ Options:
   --encryption-keyfile=<filename>  Use asymmetric encryption -- <filename> contains the (binary) public key.
   --keyfile=<filename>             Instead of prompting for a password, use file contents as the secret.
   --store-absolute-paths           Store files under their absolute paths (i.e. for backups)
-  --upload-script=<filename>       During encryption, external script to run with (<encrypted file name>, <temp file path>).
+  --save-to=<b2|s3|filename|...>   During encryption, where to save encrypted data. Can be a cloud service (s3, b2), or the path
+                                   to a script to run with (<encrypted file name>, <temp file path>).
 """
 import sys
 from base64 import urlsafe_b64encode
@@ -53,6 +54,9 @@ from nacl.public import PrivateKey, PublicKey, SealedBox as nacl_SealedBox
 from nacl.utils import random as nacl_random
 from docopt import docopt
 from humanfriendly import parse_size
+
+from fs.b2fs import b2fs
+from fs.s3fs import s3fs
 
 
 KEY_SIZE = 32  # 256 bits
@@ -145,20 +149,28 @@ def get_secret(keyfile=None):
 
 
 class BlobStore():
-    def __init__(self, upload_script=None, exists_script=None):
-        self.upload_script = upload_script
-        self.exists_script = exists_script
+    cloud_fs = {
+        'b2': b2fs,
+        's3': s3fs,
+    }
 
-    def exists(self, name):
-        # allows us to skip work for already uploaded files
-        return False
+    def __init__(self, save_to=None):
+        self.save_to = save_to
 
     def save(self, name, temp_path):
-        if not self.upload_script:
+        if not self.save_to:
             name = path.basename(name)
             copyfile(temp_path, name)
             return
-        check_output([self.upload_script, name, temp_path])
+
+        fs = self.cloud_fs.get(self.save_to)
+        if not fs:
+            check_output([self.save_to, name, temp_path])
+            return
+
+        fs = fs()
+        if not fs.exists(name):
+            fs.upload_file(temp_path, name)
 
     def save_blob(self, blob_name, temp_path):
         full_name = 'data/{}/{}'.format(blob_name[0:2], blob_name)
@@ -266,8 +278,6 @@ class Encryptor():
                     break
 
                 blob_name = blobname(data, self.secret).decode('utf-8')
-                if self.blob_store.exists(blob_name):
-                    continue
                 temp_path = path.join(tempdir, blob_name)
                 with open(temp_path, 'wb') as f:
                     self._write(f, data)
@@ -404,6 +414,6 @@ if __name__ == '__main__':
         else:
             d.decrypt(*args['<INPUTS>'])
     else:
-        bs = BlobStore(args.get('--upload-script'))
+        bs = BlobStore(args.get('--save-to'))
         en = Encryptor(secret, crypto_box, chunk_size, compresslevel, store_absolute_paths, bs)
         en.encrypt(*args['<INPUTS>'])

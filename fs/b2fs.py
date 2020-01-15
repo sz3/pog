@@ -2,7 +2,7 @@ import re
 from os import environ
 from subprocess import check_output
 
-from ..pogfs import Pogfs
+from .pogfs import Pogfs
 
 
 BUCKET_NAME = environ.get('B2_BUCKET_NAME')
