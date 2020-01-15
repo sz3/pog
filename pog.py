@@ -155,7 +155,7 @@ class BlobStore():
     }
 
     def __init__(self, save_to=None):
-        self.save_to = save_to
+        self.save_to = save_to.split(',') if save_to else None
 
     def save(self, name, temp_path):
         if not self.save_to:
@@ -163,14 +163,15 @@ class BlobStore():
             copyfile(temp_path, name)
             return
 
-        fs = self.cloud_fs.get(self.save_to)
-        if not fs:
-            check_output([self.save_to, name, temp_path])
-            return
+        for target in self.save_to:
+            fs = self.cloud_fs.get(target)
+            if not fs:
+                check_output([target, name, temp_path])
+                continue
 
-        fs = fs()
-        if not fs.exists(name):
-            fs.upload_file(temp_path, name)
+            fs = fs()
+            if not fs.exists(name):
+                fs.upload_file(temp_path, name)
 
     def save_blob(self, blob_name, temp_path):
         full_name = 'data/{}/{}'.format(blob_name[0:2], blob_name)
