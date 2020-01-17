@@ -149,13 +149,12 @@ def get_secret(keyfile=None):
 
 
 class BlobStore():
-    cloud_fs = {
-        'b2': b2fs,
-        's3': s3fs,
-    }
-
     def __init__(self, save_to=None):
-        self.save_to = save_to.split(',') if save_to else None
+        self.save_to = [t.strip() for t in save_to.split(',')] if save_to else None
+        self.cloud_fs = {
+            'b2': b2fs,
+            's3': s3fs,
+        }
 
     def save(self, name, temp_path):
         if not self.save_to:
