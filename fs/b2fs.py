@@ -56,9 +56,11 @@ class b2fs(Pogfs):
 
     def list_files(self, remote_path='', recursive=True):
         # maybe handle wildcards too... e.g. "*.mfn"
-        recursive_flag = '--recursive' if recursive else ''
-        path_args = [remote_path] if remote_path else []
-        res = _run_command('ls', recursive_flag, self.bucket_name, *path_args)
+        recursive_arg = ['--recursive'] if recursive else []
+        path_arg = [remote_path] if remote_path else []
+
+        args = ['ls'] + recursive_arg + [self.bucket_name] + path_arg
+        res = _run_command(*args)
         if not res:
             return []
         return res.split()

@@ -37,7 +37,15 @@ class s3fs(Pogfs):
 
     def list_files(self, remote_path='', recursive=True):
         s3 = boto3.client('s3')
-        pag = s3.get_paginator("list_objects_v2")
-        for p in pag.paginate(Bucket=self.bucket_name, Prefix=remote_path):
+        pager = s3.get_paginator("list_objects_v2")
+
+        kwargs = {
+            'Bucket': self.bucket_name,
+            'Prefix': remote_path,
+        }
+        if not recursive:
+            kwargs['Delimiter'] = '/'
+
+        for p in pager.paginate(**kwargs):
             for e in p.get('Contents', []):
                 yield e['Key']
