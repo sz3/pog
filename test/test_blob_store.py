@@ -12,6 +12,7 @@ class BlobStoreTest(TestDirMixin, TestCase):
             os_remove('BlobStoreTest.test_default.txt')
         except OSError:
             pass
+        super().tearDown()
 
     def test_default(self):
         dst = '/path/will/be/ignored/BlobStoreTest.test_default.txt'

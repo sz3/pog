@@ -55,8 +55,7 @@ from nacl.utils import random as nacl_random
 from docopt import docopt
 from humanfriendly import parse_size
 
-from fs.b2fs import b2fs
-from fs.s3fs import s3fs
+from fs.pogfs import b2fs, s3fs
 
 
 KEY_SIZE = 32  # 256 bits
