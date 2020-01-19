@@ -30,13 +30,7 @@ from tempfile import TemporaryDirectory
 from docopt import docopt
 
 from cli import PogCli
-from fs.pogfs import b2fs, s3fs
-
-
-FS = {
-    'b2': b2fs,
-    's3': s3fs,
-}
+from fs.pogfs import get_cloud_fs
 
 
 def get_blobs(local_mfn, config):
@@ -107,7 +101,7 @@ if __name__ == '__main__':
         if enc:
             config[opt] = enc
 
-    fs = FS[args.get('--backup')]()
+    fs = get_cloud_fs(args.get('--backup'))()
 
     reckless_abandon = args['--reckless-abandon']
 

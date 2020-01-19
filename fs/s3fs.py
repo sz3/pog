@@ -33,7 +33,8 @@ class s3fs(Pogfs):
         s3.download_file(self.bucket_name, remote_path, local_path)
 
     def remove_file(self, remote_path):
-        raise NotImplementedError()
+        s3 = boto3.client('s3')
+        s3.delete_object(Bucket=self.bucket_name, Key=remote_path)
 
     def list_files(self, remote_path='', recursive=True):
         s3 = boto3.client('s3')

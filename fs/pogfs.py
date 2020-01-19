@@ -19,6 +19,13 @@ class Pogfs:
         raise NotImplementedError()
 
 
+def get_cloud_fs(fs):
+    FS = {
+        'b2': b2fs,
+        's3': s3fs,
+    }
+    return FS.get(fs)
+
 # these helper functions allow us to throw on failed dependencies iff it's appropriate
 # for example, we might have the b2 package installed, but not boto3 -- and that's fine,
 # until we ask for a file to go to s3 -- in which case we should get an error

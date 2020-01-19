@@ -55,7 +55,7 @@ from nacl.utils import random as nacl_random
 from docopt import docopt
 from humanfriendly import parse_size
 
-from fs.pogfs import b2fs, s3fs
+from fs.pogfs import get_cloud_fs
 
 
 KEY_SIZE = 32  # 256 bits
@@ -150,10 +150,6 @@ def get_secret(keyfile=None):
 class BlobStore():
     def __init__(self, save_to=None):
         self.save_to = [t.strip() for t in save_to.split(',')] if save_to else None
-        self.cloud_fs = {
-            'b2': b2fs,
-            's3': s3fs,
-        }
 
     def save(self, name, temp_path):
         if not self.save_to:
@@ -162,7 +158,7 @@ class BlobStore():
             return
 
         for target in self.save_to:
-            fs = self.cloud_fs.get(target)
+            fs = get_cloud_fs(target)
             if not fs:
                 check_output([target, name, temp_path])
                 continue
