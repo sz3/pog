@@ -12,16 +12,16 @@ Usage:
   pog.py (-h | --help)
 
 Examples:
-  python -m pog /path/to/file1 /path/to/file2 ...
-  python -m pog --chunk-size=50MB bigfile
-  python -m pog --decrypt 2019-10-31T12:34:56.012345.mfn
+  python -m pog.pog /path/to/file1 /path/to/file2 ...
+  python -m pog.pog --chunk-size=50MB bigfile
+  python -m pog.pog --decrypt 2019-10-31T12:34:56.012345.mfn
 
-  python -m pog /home/myfile.original > outputs.txt
-  python -m pog --decrypt $(cat outputs.txt) > myfile.copy
+  python -m pog.pog /home/myfile.original > outputs.txt
+  python -m pog.pog --decrypt $(cat outputs.txt) > myfile.copy
 
-  python -m pog --encryption-keyfile=pki.encrypt /path/to/file*
-  python -m pog --decryption-keyfile=pki.decrypt --consume 2019-10-31T12:34:56.012345.mfn
-  python -m pog --encryption-keyfile=pki.encrypt --dump-manifest-index 2019-*
+  python -m pog.pog --encryption-keyfile=pki.encrypt /path/to/file*
+  python -m pog.pog --decryption-keyfile=pki.decrypt --consume 2019-10-31T12:34:56.012345.mfn
+  python -m pog.pog --encryption-keyfile=pki.encrypt --dump-manifest-index 2019-*
 
 Options:
   -h --help                        Show this help.
@@ -55,7 +55,7 @@ from nacl.utils import random as nacl_random
 from docopt import docopt
 from humanfriendly import parse_size
 
-from fs.pogfs import get_cloud_fs
+from pog.fs.pogfs import get_cloud_fs
 
 
 KEY_SIZE = 32  # 256 bits

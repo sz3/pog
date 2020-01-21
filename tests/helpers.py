@@ -1,8 +1,8 @@
-from os import path, utime
+from os import environ, path, utime
 from subprocess import check_output, call as subprocess_call
 from tempfile import TemporaryDirectory
 
-CODE_DIR = path.abspath(path.join(path.dirname(path.realpath(__file__)), '..'))
+POG_ROOT = path.abspath(path.join(path.dirname(path.realpath(__file__)), '..'))
 SAMPLE_TIME1 = 1552604385.2789645
 SAMPLE_TIME2 = 1358637058.0
 
@@ -30,7 +30,11 @@ class TestDirMixin():
             pass
 
     def run_command(self, *args, **kwargs):
-        full_args = ['python', f'{CODE_DIR}/pog.py'] + list(args)
+        full_args = ['python', '-m', 'pog.pog'] + list(args)
+
+        env = kwargs.get('env', dict(environ))
+        env['PYTHONPATH'] = POG_ROOT
+        kwargs['env'] = env
 
         if kwargs.get('stdout'):
             return subprocess_call(full_args, cwd=self.working_dir.name, **kwargs)

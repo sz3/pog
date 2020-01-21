@@ -29,8 +29,8 @@ from tempfile import TemporaryDirectory
 
 from docopt import docopt
 
-from cli import PogCli
-from fs.pogfs import get_cloud_fs
+from pog.cli import PogCli
+from pog.fs.pogfs import get_cloud_fs
 
 
 def get_blobs(local_mfn, config):

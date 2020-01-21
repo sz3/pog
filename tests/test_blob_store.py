@@ -24,7 +24,7 @@ class BlobStoreTest(TestDirMixin, TestCase):
             contents = f.read()
             self.assertEqual(contents, 'aaaabbbb')
 
-    @patch('pog.pog.s3fs', autoSpec=True)
+    @patch('pog.fs.pogfs.s3fs', autoSpec=True)
     def test_s3(self, mock_s3):
         mock_s3.return_value = mock_s3
         mock_s3.exists.return_value = False
@@ -37,7 +37,7 @@ class BlobStoreTest(TestDirMixin, TestCase):
         mock_s3.exists.assert_called_once_with('full/path/coolfile.txt')
         mock_s3.upload_file.assert_called_once_with(self.tiny_sample, 'full/path/coolfile.txt')
 
-    @patch('pog.pog.s3fs', autoSpec=True)
+    @patch('pog.fs.pogfs.s3fs', autoSpec=True)
     def test_s3_file_exists(self, mock_s3):
         mock_s3.return_value = mock_s3
         mock_s3.exists.return_value = True
@@ -50,8 +50,8 @@ class BlobStoreTest(TestDirMixin, TestCase):
         mock_s3.exists.assert_called_once_with('full/path/coolfile.txt')
         self.assertEqual(mock_s3.upload_file.call_count, 0)
 
-    @patch('pog.pog.b2fs', autoSpec=True)
-    @patch('pog.pog.s3fs', autoSpec=True)
+    @patch('pog.fs.pogfs.b2fs', autoSpec=True)
+    @patch('pog.fs.pogfs.s3fs', autoSpec=True)
     def test_s3_and_b2(self, mock_s3, mock_b2):
         mock_b2.return_value = mock_b2
         mock_b2.exists.return_value = False
@@ -69,7 +69,7 @@ class BlobStoreTest(TestDirMixin, TestCase):
         mock_s3.exists.assert_called_once_with('full/path/coolfile.txt')
         self.assertEqual(mock_s3.upload_file.call_count, 0)
 
-    @patch('pog.pog.s3fs', autoSpec=True)
+    @patch('pog.fs.pogfs.s3fs', autoSpec=True)
     def test_save_blob(self, mock_s3):
         mock_s3.return_value = mock_s3
         mock_s3.exists.return_value = False
