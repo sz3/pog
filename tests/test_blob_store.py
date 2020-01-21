@@ -1,4 +1,5 @@
 from os import remove as os_remove
+from os.path import isdir
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -81,3 +82,13 @@ class BlobStoreTest(TestDirMixin, TestCase):
 
         mock_s3.exists.assert_called_once_with('data/ar/argh12456789')
         mock_s3.upload_file.assert_called_once_with(self.tiny_sample, 'data/ar/argh12456789')
+
+    def test_temp_dir(self):
+        bs = BlobStore()
+        self.assertEqual(bs.tempdir, None)
+
+        bs = BlobStore()
+        with bs:
+            self.assertTrue(isdir(bs.tempdir))
+        self.assertFalse(isdir(bs.tempdir))
+

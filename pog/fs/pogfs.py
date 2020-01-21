@@ -29,11 +29,11 @@ def get_cloud_fs(fs):
 # these helper functions allow us to throw on failed dependencies iff it's appropriate
 # for example, we might have the b2 package installed, but not boto3 -- and that's fine,
 # until we ask for a file to go to s3 -- in which case we should get an error
-def s3fs():
+def s3fs(*args, **kwargs):
     from .s3fs import s3fs as fs
-    return fs()
+    return fs(*args, **kwargs)
 
 
-def b2fs():
+def b2fs(*args, **kwargs):
     from .b2fs import b2fs as fs
-    return fs()
+    return fs(*args, **kwargs)

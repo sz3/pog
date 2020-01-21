@@ -10,7 +10,7 @@ Usage:
   cloud-cleanup.py (-h | --help)
 
 Examples:
-  python -m cloud-cleanup --encryption-keyfile=pki.encrypt --backup=s3
+  python -m pog.cloud-cleanup --encryption-keyfile=pki.encrypt --backup=s3
 
 Options:
   -h --help                        Show this help.
