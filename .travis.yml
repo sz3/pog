@@ -9,7 +9,7 @@ install:
     - "pip install -r requirements"
 
 script:
-    - "CI=1 python -m unittest discover -t .."
+    - "CI=1 python -m unittest"
 
 notifications:
     - email: false
