@@ -11,10 +11,21 @@ def _data_path(blob_name):
     return 'data/{}/{}'.format(blob_name[0:2], blob_name)
 
 
-class Downloader():
+def _flatten(*args):
+    flatter = []
+    for elem in args:
+        if isinstance(elem, list) or isinstance(elem, tuple):
+            flatter += elem
+        else:
+            flatter.append(elem)
+    return flatter
+
+
+class download_list():
     def __init__(self, *args, **kwargs):
-        self.filenames = args
-        self.remote_loc = kwargs.get('remote_loc', [])
+        self.filenames = _flatten(*args)
+        self.fs_info = kwargs.get('fs_info', [])
+        self.yield_fs_info = kwargs.get('yield_fs_info', False)
 
     def __iter__(self):
         self.it = iter(self.filenames)
@@ -27,12 +38,12 @@ class Downloader():
                 pass
         try:
             filename = next(self.it)
-            filename, self.tempfile, remote_loc = self.download_if_necessary(filename, *self.remote_loc)
-            return filename, remote_loc
+            filename, self.tempfile, fs_info = self._download_if_necessary(filename, *self.fs_info)
+            return filename if not self.yield_fs_info else (filename, fs_info)
         except StopIteration:
             raise
 
-    def download_if_necessary(self, filename, target=None, bucket=None):
+    def _download_if_necessary(self, filename, target=None, bucket=None):
         parsed = urlparse(filename)
         target = target or parsed.scheme
         bucket = bucket or parsed.netloc

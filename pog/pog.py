@@ -53,7 +53,7 @@ from nacl.utils import random as nacl_random
 from docopt import docopt
 from humanfriendly import parse_size
 
-from pog.lib.blob_store import BlobStore, Downloader
+from pog.lib.blob_store import BlobStore, download_list
 
 
 KEY_SIZE = 32  # 256 bits
@@ -323,14 +323,14 @@ class Decryptor():
             self.dump_manifest(*inputs)
             return
 
-        for filename, __ in Downloader(*inputs):
+        for filename in download_list(inputs):
             print('*** {}:'.format(filename), file=sys.stderr)
             mfn_index = self.load_manifest_index(filename)
             for blob in mfn_index:
                 print(blob)
 
     def dump_manifest(self, *inputs):
-        for filename, __ in Downloader(*inputs):
+        for filename in download_list(inputs):
             print('*** {}:'.format(filename), file=sys.stderr)
             mfn = self.load_manifest(filename)
             for og_filename, info in mfn.items():
@@ -339,7 +339,7 @@ class Decryptor():
                     print(blob)
 
     def decrypt(self, *inputs):
-        for filename, remote_loc in Downloader(*inputs):
+        for filename, fs_info in download_list(inputs, yield_fs_info=True):
             decompressor = zstd.ZstdDecompressor()
             if filename.endswith('.mfn'):
                 mfn = self.load_manifest(filename)
@@ -349,7 +349,7 @@ class Decryptor():
                     if dir_path:
                         makedirs(dir_path, exist_ok=True)
                     with open(copy_filename, 'wb') as f, decompressor.stream_writer(f) as decompress_out:
-                        for blob, __ in Downloader(*info['blobs'], remote_loc=remote_loc):
+                        for blob in download_list(info['blobs'], fs_info=fs_info):
                             self.decrypt_single_blob(blob, out=decompress_out)
                     utime(copy_filename, times=(info['atime'], info['mtime']))
                 if self.consume:
