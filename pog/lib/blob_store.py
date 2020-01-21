@@ -7,9 +7,12 @@ from urllib.parse import urlparse
 from pog.fs.pogfs import get_cloud_fs
 
 
+def _data_path(blob_name):
+    return 'data/{}/{}'.format(blob_name[0:2], blob_name)
+
+
 class Downloader():
     def __init__(self, *args, **kwargs):
-        self.bs = BlobStore()
         self.filenames = args
         self.remote_loc = kwargs.get('remote_loc', [])
 
@@ -24,18 +27,35 @@ class Downloader():
                 pass
         try:
             filename = next(self.it)
-            filename, self.tempfile, remote_loc = self.bs.download_if_necessary(filename, *self.remote_loc)
+            filename, self.tempfile, remote_loc = self.download_if_necessary(filename, *self.remote_loc)
             return filename, remote_loc
         except StopIteration:
             raise
+
+    def download_if_necessary(self, filename, target=None, bucket=None):
+        parsed = urlparse(filename)
+        target = target or parsed.scheme
+        bucket = bucket or parsed.netloc
+        if not target:  # just a filename
+            return filename, None, []
+
+        is_mfn = filename.endswith('.mfn')
+        suffix = '.mfn' if is_mfn else ''
+
+        remote_path = parsed.path.strip("/")
+        if not is_mfn:
+            remote_path = _data_path(remote_path)
+
+        f = NamedTemporaryFile(suffix=suffix)
+        local_path = f.name
+        fs = get_cloud_fs(target)(bucket)
+        fs.download_file(local_path, remote_path)
+        return local_path, f, (target, bucket)
 
 
 class BlobStore():
     def __init__(self, save_to=None):
         self.save_to = [t.strip() for t in save_to.split(',')] if save_to else None
-
-    def data_path(self, blob_name):
-        return 'data/{}/{}'.format(blob_name[0:2], blob_name)
 
     def save(self, name, temp_path):
         if not self.save_to:
@@ -54,25 +74,5 @@ class BlobStore():
                 fs.upload_file(temp_path, name)
 
     def save_blob(self, blob_name, temp_path):
-        full_name = self.data_path(blob_name)
+        full_name = _data_path(blob_name)
         self.save(full_name, temp_path)
-
-    def download_if_necessary(self, filename, target=None, bucket=None):
-        parsed = urlparse(filename)
-        target = target or parsed.scheme
-        bucket = bucket or parsed.netloc
-        if not target:  # just a filename
-            return filename, None, None
-
-        is_mfn = filename.endswith('.mfn')
-        suffix = '.mfn' if is_mfn else ''
-
-        remote_path = parsed.path.strip("/")
-        if not is_mfn:
-            remote_path = self.data_path(remote_path)
-
-        f = NamedTemporaryFile(suffix=suffix)
-        local_path = f.name
-        fs = get_cloud_fs(target)(bucket)
-        fs.download_file(local_path, remote_path)
-        return local_path, f, (target, bucket)
