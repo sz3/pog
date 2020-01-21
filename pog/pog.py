@@ -360,7 +360,7 @@ class Decryptor():
 
 
 if __name__ == '__main__':
-    args = docopt(__doc__, version='Encryptor 0.0')
+    args = docopt(__doc__, version='Pog 0.1')
     # print(args)
 
     chunk_size = parse_size(args.get('--chunk-size', '100MB'))

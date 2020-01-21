@@ -1,13 +1,12 @@
 from collections import defaultdict
-from os import path
+from os import environ, path
 from subprocess import check_output, call as subprocess_call, STDOUT
 
-CODE_DIR = path.abspath(path.dirname(path.realpath(__file__)))
+POG_ROOT = path.abspath(path.join(path.dirname(path.realpath(__file__)), '..'))
 
 
 class PogCli():
     def __init__(self, config=None):
-        self.exe_args = ['python', 'pog.py']
         self.config = config or {}
 
     def set_keyfiles(self, keyfiles):
@@ -27,9 +26,12 @@ class PogCli():
 
     def _run_command(self, *args, **kwargs):
         args = list(args) + self._flatten_config()
-        full_args = ['python', path.join(CODE_DIR, 'pog.py')] + list(args)
+        full_args = ['python', '-m', 'pog.pog'] + list(args)
 
-        print(full_args)
+        env = kwargs.get('env', dict(environ))
+        env['PYTHONPATH'] = POG_ROOT
+        kwargs['env'] = env
+
         if kwargs.get('stdout'):
             return subprocess_call(full_args, **kwargs)
 
