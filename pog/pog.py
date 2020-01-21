@@ -53,7 +53,7 @@ from nacl.utils import random as nacl_random
 from docopt import docopt
 from humanfriendly import parse_size
 
-from pog.lib.blob_store import BlobStore, FileList
+from pog.lib.blob_store import BlobStore, Downloader
 
 
 KEY_SIZE = 32  # 256 bits
@@ -271,11 +271,10 @@ class Encryptor():
 
 
 class Decryptor():
-    def __init__(self, secret=None, crypto_box=None, consume=False, bs=None):
+    def __init__(self, secret=None, crypto_box=None, consume=False):
         self.index_box = nacl_SecretBox(secret)
         self.box = crypto_box or self.index_box
         self.consume = consume
-        self.bs = bs
 
     def _read_index_header(self, f):
         header_ciphertext = f.read(_header_size(self.index_box) + MANIFEST_INDEX_BYTES)
@@ -324,14 +323,14 @@ class Decryptor():
             self.dump_manifest(*inputs)
             return
 
-        for filename in FileList(*inputs, bs=self.bs):
+        for filename, __ in Downloader(*inputs):
             print('*** {}:'.format(filename), file=sys.stderr)
             mfn_index = self.load_manifest_index(filename)
             for blob in mfn_index:
                 print(blob)
 
     def dump_manifest(self, *inputs):
-        for filename in FileList(*inputs, bs=self.bs):
+        for filename, __ in Downloader(*inputs):
             print('*** {}:'.format(filename), file=sys.stderr)
             mfn = self.load_manifest(filename)
             for og_filename, info in mfn.items():
@@ -340,7 +339,7 @@ class Decryptor():
                     print(blob)
 
     def decrypt(self, *inputs):
-        for filename in FileList(*inputs, bs=self.bs):
+        for filename, remote_loc in Downloader(*inputs):
             decompressor = zstd.ZstdDecompressor()
             if filename.endswith('.mfn'):
                 mfn = self.load_manifest(filename)
@@ -350,7 +349,7 @@ class Decryptor():
                     if dir_path:
                         makedirs(dir_path, exist_ok=True)
                     with open(copy_filename, 'wb') as f, decompressor.stream_writer(f) as decompress_out:
-                        for blob in FileList(*info['blobs'], bs=self.bs):
+                        for blob, __ in Downloader(*info['blobs'], remote_loc=remote_loc):
                             self.decrypt_single_blob(blob, out=decompress_out)
                     utime(copy_filename, times=(info['atime'], info['mtime']))
                 if self.consume:
@@ -372,11 +371,10 @@ if __name__ == '__main__':
     if not crypto_box and not secret:
         secret = get_secret(args.get('--keyfile'))
 
-    bs = BlobStore(args.get('--save-to'))
     decrypt = args['--decrypt'] or args['--dump-manifest'] or args['--dump-manifest-index'] or args.get('--decryption-keyfile')
     if decrypt:
         consume = args['--consume']
-        d = Decryptor(secret, crypto_box, consume, bs)
+        d = Decryptor(secret, crypto_box, consume)
         if args['--dump-manifest']:
             d.dump_manifest(*args['<INPUTS>'])
         elif args['--dump-manifest-index']:
@@ -384,5 +382,6 @@ if __name__ == '__main__':
         else:
             d.decrypt(*args['<INPUTS>'])
     else:
+        bs = BlobStore(args.get('--save-to'))
         en = Encryptor(secret, crypto_box, chunk_size, compresslevel, store_absolute_paths, bs)
         en.encrypt(*args['<INPUTS>'])

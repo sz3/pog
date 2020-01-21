@@ -7,25 +7,25 @@ from urllib.parse import urlparse
 from pog.fs.pogfs import get_cloud_fs
 
 
-class FileList():
+class Downloader():
     def __init__(self, *args, **kwargs):
-        self.bs = kwargs.get('bs')
+        self.bs = BlobStore()
         self.filenames = args
+        self.remote_loc = kwargs.get('remote_loc', [])
 
     def __iter__(self):
         self.it = iter(self.filenames)
-        self.current_file = None
+        self.tempfile = None
         return self
 
     def __next__(self):
-        if self.current_file:
-            with self.current_file:
+        if self.tempfile:
+            with self.tempfile:
                 pass
         try:
             filename = next(self.it)
-            if self.bs:
-                filename, self.current_file = self.bs.download_if_necessary(filename)
-            return filename
+            filename, self.tempfile, remote_loc = self.bs.download_if_necessary(filename, *self.remote_loc)
+            return filename, remote_loc
         except StopIteration:
             raise
 
@@ -33,8 +33,6 @@ class FileList():
 class BlobStore():
     def __init__(self, save_to=None):
         self.save_to = [t.strip() for t in save_to.split(',')] if save_to else None
-        self.target = None
-        self.bucket = None
 
     def data_path(self, blob_name):
         return 'data/{}/{}'.format(blob_name[0:2], blob_name)
@@ -59,12 +57,12 @@ class BlobStore():
         full_name = self.data_path(blob_name)
         self.save(full_name, temp_path)
 
-    def download_if_necessary(self, filename):
+    def download_if_necessary(self, filename, target=None, bucket=None):
         parsed = urlparse(filename)
-        self.target = self.target or parsed.scheme
-        self.bucket = self.bucket or parsed.netloc
-        if not self.target:  # just a filename
-            return filename, None
+        target = target or parsed.scheme
+        bucket = bucket or parsed.netloc
+        if not target:  # just a filename
+            return filename, None, None
 
         is_mfn = filename.endswith('.mfn')
         suffix = '.mfn' if is_mfn else ''
@@ -75,7 +73,6 @@ class BlobStore():
 
         f = NamedTemporaryFile(suffix=suffix)
         local_path = f.name
-        fs = get_cloud_fs(self.target)(self.bucket)
+        fs = get_cloud_fs(target)(bucket)
         fs.download_file(local_path, remote_path)
-        print('local: {}, remote: {}'.format(local_path, remote_path))
-        return local_path, f
+        return local_path, f, (target, bucket)
