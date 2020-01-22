@@ -7,9 +7,13 @@ python:
 
 install:
     - "pip install -r requirements"
+    - "pip install --upgrade coveralls"
 
 script:
     - "CI=1 python -m unittest"
+
+after_success:
+    - coveralls
 
 notifications:
     - email: false
