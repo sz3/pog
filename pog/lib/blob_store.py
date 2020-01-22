@@ -53,7 +53,7 @@ class download_list():
         is_mfn = filename.endswith('.mfn')
         suffix = '.mfn' if is_mfn else ''
 
-        remote_path = parsed.path.strip("/")
+        remote_path = parsed.path.strip('/')
         if not is_mfn:
             remote_path = _data_path(remote_path)
 

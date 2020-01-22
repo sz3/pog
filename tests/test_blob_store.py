@@ -1,10 +1,114 @@
-from os import remove as os_remove
-from os.path import isdir
+from os import remove as os_remove, path
 from unittest import TestCase
 from unittest.mock import patch
 
 from .helpers import TestDirMixin
-from pog.lib.blob_store import BlobStore
+from pog.lib.blob_store import BlobStore, download_list, _data_path
+
+
+class DownloadListTest(TestDirMixin, TestCase):
+    def test_pass_through(self):
+        '''
+        if all paths are local,
+        for filename in download_list(files)
+        ==
+        for filename in files
+        '''
+        files = ['a', 'b', 'c', 'd']
+        self.assertEqual(list(download_list(files)), files)
+
+        # can pass as *args too
+        self.assertEqual(list(download_list(*files)), files)
+
+    @patch('pog.fs.pogfs.b2fs', autoSpec=True)
+    @patch('pog.fs.pogfs.s3fs', autoSpec=True)
+    def test_download_mfns(self, mock_s3, mock_b2):
+        mock_b2.return_value = mock_b2
+        mock_s3.return_value = mock_s3
+
+        local_paths = []
+        for f in download_list('s3://bucket1/file.mfn', 'b2://bucket2/another.mfn'):
+            local_paths.append(f)
+            self.assertTrue(path.exists(f))
+
+        mock_s3.assert_called_once_with('bucket1')
+        mock_s3.download_file.assert_any_call(local_paths[0], 'file.mfn')
+
+        mock_b2.assert_called_once_with('bucket2')
+        mock_b2.download_file.assert_any_call(local_paths[1], 'another.mfn')
+
+        # should clean up
+        for f in local_paths:
+            self.assertFalse(path.exists(f))
+
+    @patch('pog.fs.pogfs.b2fs', autoSpec=True)
+    @patch('pog.fs.pogfs.s3fs', autoSpec=True)
+    def test_download_yield_fs_info(self, mock_s3, mock_b2):
+        mock_b2.return_value = mock_b2
+        mock_s3.return_value = mock_s3
+
+        local_paths = []
+        fs_infos = []
+        for f, fs_info in download_list('boring.mfn', 's3://bucket1/file.mfn', 'b2://bucket2/another.mfn', yield_fs_info=True):
+            local_paths.append(f)
+            fs_infos.append(fs_info)
+            if f != 'boring.mfn':  # no tempfile download for local file
+                self.assertTrue(path.exists(f))
+
+        self.assertEqual(local_paths[0], 'boring.mfn')
+        self.assertEqual(fs_infos[0], [])
+
+        mock_s3.assert_called_once_with('bucket1')
+        mock_s3.download_file.assert_any_call(local_paths[1], 'file.mfn')
+        self.assertEqual(fs_infos[1], ('s3', 'bucket1'))
+
+        mock_b2.assert_called_once_with('bucket2')
+        mock_b2.download_file.assert_any_call(local_paths[2], 'another.mfn')
+        self.assertEqual(fs_infos[2], ('b2', 'bucket2'))
+
+        # should clean up
+        for f in local_paths:
+            self.assertFalse(path.exists(f))
+
+    @patch('pog.fs.pogfs.b2fs', autoSpec=True)
+    @patch('pog.fs.pogfs.s3fs', autoSpec=True)
+    def test_download_blobs(self, mock_s3, mock_b2):
+        mock_b2.return_value = mock_b2
+        mock_s3.return_value = mock_s3
+
+        local_paths = []
+        for f in download_list('s3://bucket1/abcdef1234', 'b2://bucket2/fedcba1234'):
+            local_paths.append(f)
+            self.assertTrue(path.exists(f))
+
+        mock_s3.assert_called_once_with('bucket1')
+        mock_s3.download_file.assert_any_call(local_paths[0], 'data/ab/abcdef1234')
+
+        mock_b2.assert_called_once_with('bucket2')
+        mock_b2.download_file.assert_any_call(local_paths[1], 'data/fe/fedcba1234')
+
+        # should clean up
+        for f in local_paths:
+            self.assertFalse(path.exists(f))
+
+    @patch('pog.fs.pogfs.s3fs', autoSpec=True)
+    def test_download_blobs_with_fs_info(self, mock_s3):
+        # this is the common use case -- get the fs_info from the mfn download, pass it in with `fs_info`
+        mock_s3.return_value = mock_s3
+
+        remote_paths = ['abcdef1234', 'fedcba1234']
+        local_paths = []
+        for f in download_list(remote_paths, fs_info=('s3', 'mybucket')):
+            local_paths.append(f)
+            self.assertTrue(path.exists(f))
+
+        mock_s3.assert_any_call('mybucket')
+        for local, remote in zip(local_paths, remote_paths):
+            mock_s3.download_file.assert_any_call(local, _data_path(remote))
+
+        # should clean up
+        for f in local_paths:
+            self.assertFalse(path.exists(f))
 
 
 class BlobStoreTest(TestDirMixin, TestCase):
