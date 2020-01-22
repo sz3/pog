@@ -14,13 +14,13 @@ def _run_command(*args, **kwargs):
     return outputs.decode('utf-8')
 
 
-'''
-That this class shells out to the command line utility is not great.
-However, it feels like the command line api is as just as likely to be stable as the underlying python code?
-It's also marginally easier to use.
-It would be nice if B2 had a better api.
-'''
 class b2fs(Pogfs):
+    '''
+    That this class shells out to the command line utility is not great.
+    However, it feels like the command line api is as just as likely to be stable as the underlying python code?
+    It's also marginally easier to use.
+    It would be nice if B2 had a better api.
+    '''
     def __init__(self, bucket_name=None):
         self.bucket_name = bucket_name or BUCKET_NAME
 

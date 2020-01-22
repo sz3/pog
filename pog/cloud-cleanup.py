@@ -5,8 +5,8 @@
 In beta. Use at your own peril.
 
 Usage:
-  cloud-cleanup.py [--keyfile=<filename> | --decryption-keyfile=<filename> | --encryption-keyfile=<filename>] [--backup=<b2|s3|..>]
-                   [--reckless-abandon]
+  cloud-cleanup.py [--keyfile=<filename> | --decryption-keyfile=<filename> | --encryption-keyfile=<filename>]
+                   [--backup=<b2|s3|..>] [--reckless-abandon]
   cloud-cleanup.py (-h | --help)
 
 Examples:

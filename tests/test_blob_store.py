@@ -49,7 +49,8 @@ class DownloadListTest(TestDirMixin, TestCase):
 
         local_paths = []
         fs_infos = []
-        for f, fs_info in download_list('boring.mfn', 's3://bucket1/file.mfn', 'b2://bucket2/another.mfn', yield_fs_info=True):
+        for f, fs_info in download_list('boring.mfn', 's3://bucket1/file.mfn', 'b2://bucket2/another.mfn',
+                                        yield_fs_info=True):
             local_paths.append(f)
             fs_infos.append(fs_info)
             if f != 'boring.mfn':  # no tempfile download for local file

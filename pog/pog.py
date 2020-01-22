@@ -8,7 +8,8 @@ Usage:
   pog.py [--keyfile=<filename> | --encryption-keyfile=<filename>] [--save-to=<b2|s3|filename|...>] [--chunk-size=<bytes>]
          [--compresslevel=<1-22>] [--store-absolute-paths] <INPUTS>...
   pog.py [--keyfile=<filename> | --decryption-keyfile=<filename>] [--decrypt | --dump-manifest] [--consume] <INPUTS>...
-  pog.py [--keyfile=<filename> | --decryption-keyfile=<filename> | --encryption-keyfile=<filename>] [--dump-manifest-index] <INPUTS>...
+  pog.py [--keyfile=<filename> | --decryption-keyfile=<filename> | --encryption-keyfile=<filename>] [--dump-manifest-index]
+         <INPUTS>...
   pog.py (-h | --help)
 
 Examples:
@@ -34,8 +35,8 @@ Options:
   --encryption-keyfile=<filename>  Use asymmetric encryption -- <filename> contains the (binary) public key.
   --keyfile=<filename>             Instead of prompting for a password, use file contents as the secret.
   --store-absolute-paths           Store files under their absolute paths (i.e. for backups)
-  --save-to=<b2|s3|filename|...>   During encryption, where to save encrypted data. Can be a cloud service (s3, b2), or the path
-                                   to a script to run with (<encrypted file name>, <temp file path>).
+  --save-to=<b2|s3|filename|...>   During encryption, where to save encrypted data. Can be a cloud service (s3, b2), or the
+                                   path to a script to run with (<encrypted file name>, <temp file path>).
 """
 import sys
 from base64 import urlsafe_b64encode
@@ -61,6 +62,7 @@ MANIFEST_INDEX_BYTES = 4  # up to 4GB -- only enforced for asymmetric encryption
 
 
 stdoutfd = None
+
 
 def _stdout():
     global stdoutfd
@@ -146,7 +148,8 @@ def get_secret(keyfile=None):
 
 
 class Encryptor():
-    def __init__(self, secret, crypto_box=None, chunk_size=100000000, compresslevel=3, store_absolute_paths=False, blob_store=None):
+    def __init__(self, secret, crypto_box=None, chunk_size=100000000, compresslevel=3, store_absolute_paths=False,
+                 blob_store=None):
         self.secret = secret
         self.index_box = nacl_SecretBox(secret)
         self.box = crypto_box or self.index_box
@@ -165,9 +168,9 @@ class Encryptor():
         ex:
         data = data + b'\x50\x2A\x4D\x18\x02\x00\x00\x00ab'
         '''
-        l = len(data)
-        if l < self.chunk_size:
-            pad_length = l % 256
+        ll = len(data)
+        if ll < self.chunk_size:
+            pad_length = ll % 256
             # 8 bytes for frame header, then pad
             # (pad_length).to_bytes(4, byteorder='little')
             padding = b'\x50\x2A\x4D\x18' + bytes([pad_length, 0, 0, 0]) + nacl_random(pad_length)
@@ -239,7 +242,8 @@ class Encryptor():
 
     def encrypt_single_file(self, filename):
         cctx = zstd.ZstdCompressor(level=self.compresslevel)
-        with open(filename, 'rb') as f, cctx.stream_reader(f) as compressed_stream, TemporaryDirectory(dir=_get_temp_dir()) as tempdir:
+        td = TemporaryDirectory(dir=_get_temp_dir())
+        with open(filename, 'rb') as f, cctx.stream_reader(f) as compressed_stream, td as tempdir:
             while True:
                 data = compressed_stream.read(self.chunk_size)
                 if not data:
@@ -368,7 +372,12 @@ def main(args):
     if not crypto_box and not secret:
         secret = get_secret(args.get('--keyfile'))
 
-    decrypt = args.get('--decrypt') or args.get('--dump-manifest') or args.get('--dump-manifest-index') or args.get('--decryption-keyfile')
+    decrypt = (
+        args.get('--decrypt') or
+        args.get('--dump-manifest') or
+        args.get('--dump-manifest-index') or
+        args.get('--decryption-keyfile')
+    )
     if decrypt:
         consume = args.get('--consume')
         d = Decryptor(secret, crypto_box, consume)

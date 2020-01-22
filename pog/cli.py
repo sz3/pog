@@ -40,7 +40,7 @@ class PogCli():
         return check_output(full_args, **kwargs).strip().decode('utf-8').split('\n')
 
     def _flatten_config(self):
-        return ['--{}={}'.format(k, v) for k,v in self.config.items()]
+        return ['--{}={}'.format(k, v) for k, v in self.config.items()]
 
     def dumpManifest(self, mfn):
         info = defaultdict(list)

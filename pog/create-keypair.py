@@ -22,6 +22,7 @@ def generate(filename):
 
     return encryption_keyfile, decryption_keyfile
 
+
 if __name__ == '__main__':
     enc, dec = generate('pki')
     print('`{}` contains the key for encryption'.format(enc))
