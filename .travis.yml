@@ -10,10 +10,8 @@ install:
     - "pip install --upgrade coveralls"
 
 script:
-    - "CI=1 coverage run -m unittest"
+    - "CI=1 coverage run --source=pog -m unittest"
 
 after_success:
     - coveralls
 
-notifications:
-    - email: false
