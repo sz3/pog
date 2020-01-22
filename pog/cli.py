@@ -1,13 +1,15 @@
 from collections import defaultdict
 from os import environ, path
-from subprocess import check_output, call as subprocess_call, STDOUT
+from subprocess import check_output, call as subprocess_call
 
 POG_ROOT = path.abspath(path.join(path.dirname(path.realpath(__file__)), '..'))
 
 
 class PogCli():
-    def __init__(self, config=None):
+    def __init__(self, pog_cmd=None, config=None, kwargs=None):
+        self.cmd = pog_cmd or ['python', '-m', 'pog.pog']
         self.config = config or {}
+        self.kwargs = kwargs or {}
 
     def set_keyfiles(self, keyfiles):
         for f in keyfiles:
@@ -24,9 +26,9 @@ class PogCli():
             self.config['keyfile'] = f
             return
 
-    def _run_command(self, *args, **kwargs):
-        args = list(args) + self._flatten_config()
-        full_args = ['python', '-m', 'pog.pog'] + list(args)
+    def run_command(self, *args, **kwargs):
+        full_args = list(self.cmd) + list(args) + self._flatten_config()
+        kwargs = {**self.kwargs, **kwargs}
 
         env = kwargs.get('env', dict(environ))
         env['PYTHONPATH'] = POG_ROOT
@@ -35,7 +37,7 @@ class PogCli():
         if kwargs.get('stdout'):
             return subprocess_call(full_args, **kwargs)
 
-        return check_output(full_args, stderr=STDOUT, **kwargs).strip().decode('utf-8').split('\n')
+        return check_output(full_args, **kwargs).strip().decode('utf-8').split('\n')
 
     def _flatten_config(self):
         return ['--{}={}'.format(k, v) for k,v in self.config.items()]
@@ -43,7 +45,7 @@ class PogCli():
     def dumpManifest(self, mfn):
         info = defaultdict(list)
         current_file = ''
-        for line in self._run_command('--dump-manifest', mfn):
+        for line in self.run_command('--dump-manifest', mfn):
             if line.startswith('***'):
                 continue
             if line.startswith('*'):
@@ -53,4 +55,4 @@ class PogCli():
         return dict(info)
 
     def dumpManifestIndex(self, mfn):
-        yield from self._run_command('--dump-manifest-index', mfn)
+        yield from self.run_command('--dump-manifest-index', mfn)

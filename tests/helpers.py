@@ -1,6 +1,7 @@
 from os import environ, path, utime
-from subprocess import check_output, call as subprocess_call
 from tempfile import TemporaryDirectory
+
+from pog.cli import PogCli
 
 POG_ROOT = path.abspath(path.join(path.dirname(path.realpath(__file__)), '..'))
 SAMPLE_TIME1 = 1552604385.2789645
@@ -29,6 +30,7 @@ class TestDirMixin():
         utime(self.another_sample, times=(SAMPLE_TIME2, SAMPLE_TIME2))
 
         self.working_dir = TemporaryDirectory()
+        self.cli = PogCli(_program_args())
         super().setUp()
 
     def tearDown(self):
@@ -37,13 +39,5 @@ class TestDirMixin():
             pass
 
     def run_command(self, *args, **kwargs):
-        full_args = _program_args() + list(args)
-
-        env = kwargs.get('env', dict(environ))
-        env['PYTHONPATH'] = POG_ROOT
-        kwargs['env'] = env
-
-        if kwargs.get('stdout'):
-            return subprocess_call(full_args, cwd=self.working_dir.name, **kwargs)
-
-        return check_output(full_args, cwd=self.working_dir.name, **kwargs).strip().decode('utf-8').split('\n')
+        kwargs['cwd'] = self.working_dir.name
+        return self.cli.run_command(*args, **kwargs)
