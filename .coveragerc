@@ -1,2 +1,7 @@
 [report]
 exclude_lines =
+    if __name__ == '__main__':
+
+[run]
+data_file = /tmp/.coverage
+source = pog

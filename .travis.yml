@@ -13,5 +13,6 @@ script:
     - "CI=1 coverage run --source=pog -m unittest"
 
 after_success:
+    - coverage combine --append /tmp
     - coveralls
 

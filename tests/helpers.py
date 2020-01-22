@@ -7,6 +7,13 @@ SAMPLE_TIME1 = 1552604385.2789645
 SAMPLE_TIME2 = 1358637058.0
 
 
+def _program_args():
+    if 'coverage' in environ.get('_', ''):
+        return ['coverage', 'run', '--rcfile', f'{POG_ROOT}/.coveragerc2', '-a', '-m', 'pog.pog']
+    else:
+        return ['python', '-m', 'pog.pog']
+
+
 class TestDirMixin():
     def setUp(self):
         self.input_dir = TemporaryDirectory()
@@ -30,7 +37,7 @@ class TestDirMixin():
             pass
 
     def run_command(self, *args, **kwargs):
-        full_args = ['python', '-m', 'pog.pog'] + list(args)
+        full_args = _program_args() + list(args)
 
         env = kwargs.get('env', dict(environ))
         env['PYTHONPATH'] = POG_ROOT

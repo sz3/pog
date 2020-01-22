@@ -359,25 +359,22 @@ class Decryptor():
                     self.decrypt_single_blob(filename, out=decompress_out)
 
 
-if __name__ == '__main__':
-    args = docopt(__doc__, version='Pog 0.1')
-    # print(args)
-
+def main(args):
     chunk_size = parse_size(args.get('--chunk-size', '100MB'))
     compresslevel = int(args.get('--compresslevel', '3'))
-    store_absolute_paths = args['--store-absolute-paths']
+    store_absolute_paths = args.get('--store-absolute-paths')
 
     secret, crypto_box = get_asymmetric_encryption(args.get('--decryption-keyfile'), args.get('--encryption-keyfile'))
     if not crypto_box and not secret:
         secret = get_secret(args.get('--keyfile'))
 
-    decrypt = args['--decrypt'] or args['--dump-manifest'] or args['--dump-manifest-index'] or args.get('--decryption-keyfile')
+    decrypt = args.get('--decrypt') or args.get('--dump-manifest') or args.get('--dump-manifest-index') or args.get('--decryption-keyfile')
     if decrypt:
-        consume = args['--consume']
+        consume = args.get('--consume')
         d = Decryptor(secret, crypto_box, consume)
-        if args['--dump-manifest']:
+        if args.get('--dump-manifest'):
             d.dump_manifest(*args['<INPUTS>'])
-        elif args['--dump-manifest-index']:
+        elif args.get('--dump-manifest-index'):
             d.dump_manifest_index(*args['<INPUTS>'])
         else:
             d.decrypt(*args['<INPUTS>'])
@@ -385,3 +382,8 @@ if __name__ == '__main__':
         bs = BlobStore(args.get('--save-to'))
         en = Encryptor(secret, crypto_box, chunk_size, compresslevel, store_absolute_paths, bs)
         en.encrypt(*args['<INPUTS>'])
+
+
+if __name__ == '__main__':
+    args = docopt(__doc__, version='Pog 0.1')
+    main(args)

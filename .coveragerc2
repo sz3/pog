@@ -1,0 +1,4 @@
+# for getting coverage from TestDirMixin's subprocess calls
+[run]
+data_file = /tmp/.coverage.2
+source = pog
