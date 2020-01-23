@@ -1,6 +1,6 @@
 pypi:
 	python setup.py sdist
-	twine upload -r pypitest dist/*.tar.gz
+	twine upload dist/*.tar.gz
 
 clean:
 	find . -name '*.py[co]' -delete
