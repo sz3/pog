@@ -9,7 +9,7 @@ SAMPLE_TIME2 = 1358637058.0
 
 
 def _program_args():
-    if 'coverage' in environ.get('_', ''):
+    if 'coverage' in environ.get('_', '') or environ.get('SUBPROCESS_COVERAGE'):
         return ['coverage', 'run', '--rcfile', f'{POG_ROOT}/.coveragerc2', '-a', '-m', 'pog.pog']
     else:
         return ['python', '-m', 'pog.pog']

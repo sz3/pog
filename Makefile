@@ -6,3 +6,11 @@ clean:
 	find . -name '*.py[co]' -delete
 	find . -name '__pycache__' -delete
 	rm -rf build/ dist/ *.egg *.egg-info/
+
+test:
+	SUBPROCESS_COVERAGE=1 coverage run -m unittest
+	coverage combine --append /tmp
+	coverage report
+
+flake:
+	flake8
