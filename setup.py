@@ -5,7 +5,7 @@ setup(
     name='pogcli',
     license='MIT',
     url='https://github.com/sz3/pog',
-    version='0.0.1',
+    version='0.1.0',
 
     entry_points={
         'console_scripts': [
@@ -21,6 +21,7 @@ setup(
 
     python_requires='>=3.6',
     install_requires=[
+        'argon2-cffi>=19.2.0',
         'docopt>=0.6.2',
         'humanfriendly>=4.18',
         'PyNaCl>=1.3.0',

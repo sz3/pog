@@ -55,6 +55,7 @@ from docopt import docopt
 from humanfriendly import parse_size
 
 from pog.lib.blob_store import BlobStore, download_list
+from pog.lib.secret import pass_to_hash
 
 
 KEY_SIZE = 32  # 256 bits
@@ -121,9 +122,9 @@ def get_asymmetric_encryption(decryption_keyfile=None, encryption_keyfile=None):
     return secret, box
 
 
-def blobname(bites, secret):
-    bites_hash = sha256(bites).digest()
-    return urlsafe_b64encode(sha256(secret + bites_hash).digest())
+def blobname(content, secret):
+    content_hash = sha256(content).digest()
+    return urlsafe_b64encode(sha256(secret + content_hash).digest())
 
 
 def get_secret(keyfile=None):
@@ -144,7 +145,7 @@ def get_secret(keyfile=None):
             print('passwords did not match! Please try again.', file=sys.stderr)
             continue
         break
-    return sha256(password.encode('utf-8')).digest()
+    return pass_to_hash(password)
 
 
 class Encryptor():
@@ -394,5 +395,5 @@ def main(args):
 
 
 if __name__ == '__main__':
-    args = docopt(__doc__, version='Pog 0.1')
+    args = docopt(__doc__, version='Pog 0.1.0')
     main(args)
