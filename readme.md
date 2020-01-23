@@ -1,5 +1,5 @@
 [![Build Status](https://travis-ci.org/sz3/pog.svg?branch=master)](https://travis-ci.org/sz3/pog)
-[![Coverage Status](https://coveralls.io/repos/sz3/pog/badge.svg?branch=master&service=github)](https://coveralls.io/github/sz3/pog?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/sz3/pog/badge.svg?branch=master)](https://coveralls.io/github/sz3/pog?branch=master)
 
 ### Pretty Ok Gncryption
 
