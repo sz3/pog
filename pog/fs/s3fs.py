@@ -36,7 +36,7 @@ class s3fs(Pogfs):
         s3 = boto3.client('s3')
         s3.delete_object(Bucket=self.bucket_name, Key=remote_path)
 
-    def list_files(self, remote_path='', recursive=True):
+    def list_files(self, remote_path='', recursive=False):
         s3 = boto3.client('s3')
         pager = s3.get_paginator("list_objects_v2")
 

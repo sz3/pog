@@ -16,7 +16,7 @@ class Pogfs:
     def remove_file(self, remote_path):
         raise NotImplementedError()
 
-    def list_files(self, remote_path='', recursive=True):
+    def list_files(self, remote_path='', recursive=False):
         raise NotImplementedError()
 
 
@@ -24,6 +24,7 @@ def get_cloud_fs(fs):
     FS = {
         'b2': b2fs,
         's3': s3fs,
+        'test': localfs,
     }
     return FS.get(fs)
 
@@ -38,4 +39,9 @@ def s3fs(*args, **kwargs):
 
 def b2fs(*args, **kwargs):
     from .b2fs import b2fs as fs
+    return fs(*args, **kwargs)
+
+
+def localfs(*args, **kwargs):
+    from .localfs import localfs as fs
     return fs(*args, **kwargs)

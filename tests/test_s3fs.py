@@ -76,7 +76,7 @@ class s3fsTest(TestCase):
 
         mock_boto.client.assert_called_once_with('s3')
         mock_boto.get_paginator.assert_called_once_with('list_objects_v2')
-        mock_boto.paginate.assert_called_once_with(Bucket='bucket', Prefix='')
+        mock_boto.paginate.assert_called_once_with(Bucket='bucket', Prefix='', Delimiter='/')
 
     def test_list_files_subdir(self, mock_boto):
         mock_boto.client.return_value = mock_boto
@@ -85,8 +85,8 @@ class s3fsTest(TestCase):
             [{'Contents': [{'Key': 'abc'}, {'Key': 'def'}]}],
         ]
 
-        self.assertEqual(list(self.fs.list_files('path/to/files', recursive=False)), ['abc', 'def'])
+        self.assertEqual(list(self.fs.list_files('path/to/files', recursive=True)), ['abc', 'def'])
 
         mock_boto.client.assert_called_once_with('s3')
         mock_boto.get_paginator.assert_called_once_with('list_objects_v2')
-        mock_boto.paginate.assert_called_once_with(Bucket='bucket', Prefix='path/to/files', Delimiter='/')
+        mock_boto.paginate.assert_called_once_with(Bucket='bucket', Prefix='path/to/files')

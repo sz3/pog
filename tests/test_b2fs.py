@@ -81,16 +81,19 @@ class b2fsTest(TestCase):
         self.assertEqual(mock_run.call_count, 0)
 
     def test_list_files_defaults(self, mock_run):
-        mock_run.return_value = EX_LS_RECURSIVE
-        self.assertEqual(self.fs.list_files(), ['data/AA/AAaa0123456789=', 'data/BB/BBbb0123456789=', 'file.txt', 'pog.py'])
-        mock_run.assert_called_once_with(['b2', 'ls', '--recursive', 'bucket'])
+        mock_run.return_value = EX_LS
+        self.assertEqual(self.fs.list_files(), ['data/', 'file.txt', 'pog.py'])
+        mock_run.assert_called_once_with(['b2', 'ls', 'bucket'])
 
     def test_list_files_subdir(self, mock_run):
-        mock_run.return_value = EX_LS
-        self.assertEqual(self.fs.list_files('path/to/dir', recursive=False), ['data/', 'file.txt', 'pog.py'])
-        mock_run.assert_called_once_with(['b2', 'ls', 'bucket', 'path/to/dir'])
+        mock_run.return_value = EX_LS_RECURSIVE
+        self.assertEqual(
+            self.fs.list_files('path/to/dir', recursive=True),
+            ['data/AA/AAaa0123456789=', 'data/BB/BBbb0123456789=', 'file.txt', 'pog.py']
+        )
+        mock_run.assert_called_once_with(['b2', 'ls', '--recursive', 'bucket', 'path/to/dir'])
 
     def test_list_files_empty(self, mock_run):
         mock_run.return_value = b''
-        self.assertEqual(self.fs.list_files('path/to/nowhere', recursive=True), [])
-        mock_run.assert_called_once_with(['b2', 'ls', '--recursive', 'bucket', 'path/to/nowhere'])
+        self.assertEqual(self.fs.list_files('path/to/nowhere', recursive=False), [])
+        mock_run.assert_called_once_with(['b2', 'ls', 'bucket', 'path/to/nowhere'])
