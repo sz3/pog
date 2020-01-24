@@ -8,11 +8,11 @@ SAMPLE_TIME1 = 1552604385.2789645
 SAMPLE_TIME2 = 1358637058.0
 
 
-def _program_args():
+def _program_args(script):
     if 'coverage' in environ.get('_', '') or environ.get('SUBPROCESS_COVERAGE'):
-        return ['coverage', 'run', '--rcfile', f'{POG_ROOT}/.coveragerc2', '-a', '-m', 'pog.pog']
+        return ['coverage', 'run', '--rcfile', f'{POG_ROOT}/.coveragerc2', '-a', '-m', script]
     else:
-        return ['python', '-m', 'pog.pog']
+        return ['python', '-m', script]
 
 
 class TestDirMixin():
@@ -30,7 +30,9 @@ class TestDirMixin():
         utime(self.another_sample, times=(SAMPLE_TIME2, SAMPLE_TIME2))
 
         self.working_dir = TemporaryDirectory()
-        self.cli = PogCli(pog_cmd=_program_args())
+
+        script = getattr(self, 'script', 'pog.pog')
+        self.cli = PogCli(pog_cmd=_program_args(script))
         super().setUp()
 
     def tearDown(self):
