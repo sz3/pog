@@ -20,6 +20,13 @@ class DownloadListTest(TestDirMixin, TestCase):
         # can pass as *args too
         self.assertEqual(list(download_list(*files)), files)
 
+    def test_pass_through_tricky(self):
+        '''
+        some paths kinda look like urls, but aren't
+        '''
+        files = ['2020-01-23T18:02:16.482212.mfn',]
+        self.assertEqual(list(download_list(files)), files)
+
     @patch('pog.fs.pogfs.b2fs', autoSpec=True)
     @patch('pog.fs.pogfs.s3fs', autoSpec=True)
     def test_download_mfns(self, mock_s3, mock_b2):

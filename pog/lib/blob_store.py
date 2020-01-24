@@ -50,6 +50,11 @@ class download_list():
         if not target:  # just a filename
             return filename, None, []
 
+        try:
+            fs = get_cloud_fs(target)(bucket)
+        except TypeError:  # not a real fs, treat it as a filename
+            return filename, None, []
+
         is_mfn = filename.endswith('.mfn')
         suffix = '.mfn' if is_mfn else ''
 
@@ -59,7 +64,6 @@ class download_list():
 
         f = NamedTemporaryFile(suffix=suffix)
         local_path = f.name
-        fs = get_cloud_fs(target)(bucket)
         fs.download_file(local_path, remote_path)
         return local_path, f, (target, bucket)
 
