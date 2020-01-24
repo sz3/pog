@@ -92,7 +92,7 @@ def doit(config, fs, reckless_abandon=False):
                 fs.remove_file(blob)
 
 
-if __name__ == '__main__':
+def main():
     args = docopt(__doc__, version='Pog Cloud Cleanup 0.0')
 
     config = {}
@@ -106,3 +106,7 @@ if __name__ == '__main__':
     reckless_abandon = args['--reckless-abandon']
 
     doit(config, fs, reckless_abandon)
+
+
+if __name__ == '__main__':
+    main()

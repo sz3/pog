@@ -364,7 +364,8 @@ class Decryptor():
                     self.decrypt_single_blob(filename, out=decompress_out)
 
 
-def main(args):
+def main():
+    args = docopt(__doc__, version='Pog 0.1.0')
     chunk_size = parse_size(args.get('--chunk-size', '100MB'))
     compresslevel = int(args.get('--compresslevel', '3'))
     store_absolute_paths = args.get('--store-absolute-paths')
@@ -395,5 +396,4 @@ def main(args):
 
 
 if __name__ == '__main__':
-    args = docopt(__doc__, version='Pog 0.1.0')
-    main(args)
+    main()

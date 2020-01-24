@@ -23,7 +23,7 @@ def generate(filename):
     return encryption_keyfile, decryption_keyfile
 
 
-if __name__ == '__main__':
+def main():
     enc, dec = generate('pki')
     print('`{}` contains the key for encryption'.format(enc))
     print('`{}` contains the key for decryption'.format(dec))
@@ -32,3 +32,7 @@ if __name__ == '__main__':
         'the "public" (encryption) key if necessary.'.format(dec)
     )
     print('Keep it secret. Keep it safe.')
+
+
+if __name__ == '__main__':
+    main()
