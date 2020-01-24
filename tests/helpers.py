@@ -30,7 +30,7 @@ class TestDirMixin():
         utime(self.another_sample, times=(SAMPLE_TIME2, SAMPLE_TIME2))
 
         self.working_dir = TemporaryDirectory()
-        self.cli = PogCli(_program_args())
+        self.cli = PogCli(pog_cmd=_program_args())
         super().setUp()
 
     def tearDown(self):

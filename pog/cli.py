@@ -6,7 +6,7 @@ POG_ROOT = path.abspath(path.join(path.dirname(path.realpath(__file__)), '..'))
 
 
 class PogCli():
-    def __init__(self, pog_cmd=None, config=None, kwargs=None):
+    def __init__(self, config=None, kwargs=None, pog_cmd=None):
         self.cmd = pog_cmd or ['python', '-m', 'pog.pog']
         self.config = config or {}
         self.kwargs = kwargs or {}

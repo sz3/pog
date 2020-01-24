@@ -5,12 +5,12 @@
 In beta. Use at your own peril.
 
 Usage:
-  cloud-cleanup.py [--keyfile=<filename> | --decryption-keyfile=<filename> | --encryption-keyfile=<filename>]
-                   [--backup=<b2|s3|..>] [--reckless-abandon]
-  cloud-cleanup.py (-h | --help)
+  pog-cleanup [--keyfile=<filename> | --decryption-keyfile=<filename> | --encryption-keyfile=<filename>]
+              [--backup=<b2|s3|..>] [--reckless-abandon]
+  pog-cleanup (-h | --help)
 
 Examples:
-  python -m pog.cloud-cleanup --encryption-keyfile=pki.encrypt --backup=s3
+  python -m pog.cloud_cleanup --encryption-keyfile=pki.encrypt --backup=s3
 
 Options:
   -h --help                        Show this help.
