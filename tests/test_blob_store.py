@@ -24,7 +24,7 @@ class DownloadListTest(TestDirMixin, TestCase):
         '''
         some paths kinda look like urls, but aren't
         '''
-        files = ['2020-01-23T18:02:16.482212.mfn',]
+        files = ['2020-01-23T18:02:16.482212.mfn']
         self.assertEqual(list(download_list(files)), files)
 
     @patch('pog.fs.pogfs.b2fs', autoSpec=True)
