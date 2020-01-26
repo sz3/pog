@@ -8,6 +8,8 @@ from tempfile import TemporaryDirectory
 from unittest import TestCase, skipUnless
 
 from .helpers import TestDirMixin, POG_ROOT, SAMPLE_TIME1, SAMPLE_TIME2
+from pog.fs.localfs import localfs
+from pog.lib.blob_store import _data_path
 
 
 SAMPLE_TEXT = b'''069:15:22 Lovell (onboard): Hey, I don't see a thing. Where are we?
@@ -129,6 +131,29 @@ class KeyfileTest(TestDirMixin, TestCase):
             '* {}:'.format('8.txt'),
             self.consistency_blobname,
         ])
+
+    def test_consistency_fs_input(self):
+        # flex the download_list() logic in various ways. First, we'll create a test pogfs data structure in our working_dir
+        fs = localfs(root=self.working_dir.name)
+        fs.upload_file(f'{POG_ROOT}/tests/samples/{self.consistency_mfn}', self.consistency_mfn)
+        fs.upload_file(f'{POG_ROOT}/tests/samples/{self.consistency_blobname}', _data_path(self.consistency_blobname))
+
+        # --dump-manifest
+        show_mfn = self.run_command(self.decryption_flag, '--dump-manifest', f'test:///{self.consistency_mfn}')
+        self.assertEqual(show_mfn, [self.consistency_blobname])
+
+        # --dump-manifest-index
+        show_mfn_idx = self.run_command(self.decryption_flag, '--dump-manifest-index', f'test:///{self.consistency_mfn}')
+        self.assertEqual(show_mfn_idx, [self.consistency_blobname])
+
+        # --decrypt
+        dec = self.run_command(self.decryption_flag, '--decrypt', f'test:///{self.consistency_mfn}')
+        self.assertEqual(dec, [''])
+
+        # read the decrypted file
+        with open(path.join(self.working_dir.name, '8.txt'), 'rb') as f:
+            contents = f.read()
+        self.assertEqual(contents, SAMPLE_TEXT)
 
     def test_absolute_paths(self):
         # encrypt our sample files, saving their absolute paths in the manifest
