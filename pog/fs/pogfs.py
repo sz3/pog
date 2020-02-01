@@ -1,3 +1,6 @@
+from fnmatch import fnmatch
+from os.path import basename
+
 '''
 Implemented per cloud storage service
 '''
@@ -16,8 +19,13 @@ class Pogfs:
     def remove_file(self, remote_path):
         raise NotImplementedError()
 
-    def list_files(self, remote_path='', recursive=False):
+    def list_files(self, remote_path='', pattern=None, recursive=False):
         raise NotImplementedError()
+
+    def _match(self, path, pattern):
+        if path.endswith('/'):  # we want to return directories
+            return True
+        return fnmatch(basename(path), pattern)
 
 
 def get_cloud_fs(fs):

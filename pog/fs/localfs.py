@@ -25,8 +25,11 @@ class localfs(Pogfs):
         p = Path(self.root, remote_path)
         remove(p.resolve())
 
-    def list_files(self, remote_path='', recursive=False):
-        globstr = '**/*' if recursive else '*'
+    def list_files(self, remote_path='', pattern=None, recursive=False):
+        globstr = pattern or '*'
+        if recursive:
+            globstr = f'**/{globstr}'
+
         p = Path(self.root, remote_path)
-        files = [str(f) for f in p.glob(globstr)]
+        files = [f'{i}/' if i.is_dir() else str(i) for i in p.glob(globstr)]
         return sorted(files)

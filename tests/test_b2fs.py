@@ -97,3 +97,8 @@ class b2fsTest(TestCase):
         mock_run.return_value = b''
         self.assertEqual(self.fs.list_files('path/to/nowhere', recursive=False), [])
         mock_run.assert_called_once_with(['b2', 'ls', 'bucket', 'path/to/nowhere'])
+
+    def test_list_files_pattern(self, mock_run):
+        mock_run.return_value = EX_LS
+        self.assertEqual(self.fs.list_files(pattern='*.txt'), ['data/', 'file.txt'])
+        mock_run.assert_called_once_with(['b2', 'ls', 'bucket'])

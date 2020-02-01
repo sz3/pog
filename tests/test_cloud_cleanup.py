@@ -33,7 +33,7 @@ class CloudCleanupTest(TestDirMixin, TestCase):
             f'{self.working_dir.name}/1.mfn',
             f'{self.working_dir.name}/2.mfn',
             f'{self.working_dir.name}/3.mfn',
-            f'{self.working_dir.name}/data',
+            f'{self.working_dir.name}/data/',
             f'{self.working_dir.name}/data/US-1DnY1AVF1huiGj10G9SEGwCHa4GVxJcBnaCuAcXk=',
             f'{self.working_dir.name}/data/uselessblob',
         ])
@@ -46,6 +46,6 @@ class CloudCleanupTest(TestDirMixin, TestCase):
 
         self.assertEqual(self.fs.list_files(recursive=True), [
             f'{self.working_dir.name}/3.mfn',
-            f'{self.working_dir.name}/data',
+            f'{self.working_dir.name}/data/',
             f'{self.working_dir.name}/data/US-1DnY1AVF1huiGj10G9SEGwCHa4GVxJcBnaCuAcXk=',
         ])

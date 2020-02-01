@@ -69,10 +69,13 @@ class s3fsTest(TestCase):
         mock_boto.client.return_value = mock_boto
         mock_boto.get_paginator.return_value = mock_boto
         mock_boto.paginate.side_effect = [
-            [{'Contents': [{'Key': 'abc'}, {'Key': 'def'}]}],
+            [{
+                'CommonPrefixes': [{'Prefix': 'dir/'}],
+                'Contents': [{'Key': 'abc'}, {'Key': 'def'}],
+            }],
         ]
 
-        self.assertEqual(list(self.fs.list_files()), ['abc', 'def'])
+        self.assertEqual(list(self.fs.list_files()), ['dir/', 'abc', 'def'])
 
         mock_boto.client.assert_called_once_with('s3')
         mock_boto.get_paginator.assert_called_once_with('list_objects_v2')
@@ -90,3 +93,19 @@ class s3fsTest(TestCase):
         mock_boto.client.assert_called_once_with('s3')
         mock_boto.get_paginator.assert_called_once_with('list_objects_v2')
         mock_boto.paginate.assert_called_once_with(Bucket='bucket', Prefix='path/to/files')
+
+    def test_list_files_pattern(self, mock_boto):
+        mock_boto.client.return_value = mock_boto
+        mock_boto.get_paginator.return_value = mock_boto
+        mock_boto.paginate.side_effect = [
+            [{
+                'CommonPrefixes': [{'Prefix': 'dir/'}],
+                'Contents': [{'Key': 'file.txt'}, {'Key': 'other.jpg'}],
+            }],
+        ]
+
+        self.assertEqual(list(self.fs.list_files(pattern='*.txt')), ['dir/', 'file.txt'])
+
+        mock_boto.client.assert_called_once_with('s3')
+        mock_boto.get_paginator.assert_called_once_with('list_objects_v2')
+        mock_boto.paginate.assert_called_once_with(Bucket='bucket', Prefix='', Delimiter='/')

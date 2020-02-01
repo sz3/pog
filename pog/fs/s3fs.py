@@ -36,7 +36,7 @@ class s3fs(Pogfs):
         s3 = boto3.client('s3')
         s3.delete_object(Bucket=self.bucket_name, Key=remote_path)
 
-    def list_files(self, remote_path='', recursive=False):
+    def list_files(self, remote_path='', pattern=None, recursive=False):
         s3 = boto3.client('s3')
         pager = s3.get_paginator("list_objects_v2")
 
@@ -48,5 +48,10 @@ class s3fs(Pogfs):
             kwargs['Delimiter'] = '/'
 
         for p in pager.paginate(**kwargs):
-            for e in p.get('Contents', []):
-                yield e['Key']
+            for d in p.get('CommonPrefixes', []):
+                yield d['Prefix']
+            for f in p.get('Contents', []):
+                filename = f['Key']
+                if pattern and not self._match(filename, pattern):
+                    continue
+                yield filename

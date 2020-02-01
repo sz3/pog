@@ -54,7 +54,7 @@ class b2fs(Pogfs):
         res = _run_command('delete-file-version', remote_path, file_id)
         print(res)
 
-    def list_files(self, remote_path='', recursive=False):
+    def list_files(self, remote_path='', pattern=None, recursive=False):
         # maybe handle wildcards too... e.g. "*.mfn"
         recursive_arg = ['--recursive'] if recursive else []
         path_arg = [remote_path] if remote_path else []
@@ -63,4 +63,8 @@ class b2fs(Pogfs):
         res = _run_command(*args)
         if not res:
             return []
-        return res.split()
+
+        res = res.split()
+        if pattern:
+            res = [f for f in res if self._match(f, pattern)]
+        return res
