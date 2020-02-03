@@ -12,6 +12,9 @@ class PogCli():
         self.kwargs = kwargs or {}
 
     def set_keyfiles(self, keyfiles):
+        for k in ('keyfile', 'decryption-keyfile', 'encryption-keyfile'):
+            self.config.pop(k, None)
+
         for f in keyfiles:
             if f.endswith('.decrypt'):
                 self.config['decryption-keyfile'] = f
