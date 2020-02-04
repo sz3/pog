@@ -15,6 +15,9 @@ class PogCli():
         for k in ('keyfile', 'decryption-keyfile', 'encryption-keyfile'):
             self.config.pop(k, None)
 
+        if not keyfiles:
+            return
+
         for f in keyfiles:
             if f.endswith('.decrypt'):
                 self.config['decryption-keyfile'] = f
