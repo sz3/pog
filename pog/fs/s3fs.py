@@ -10,7 +10,7 @@ BUCKET_NAME = environ.get('S3_BUCKET_NAME')
 
 
 class s3fs(Pogfs):
-    def __init__(self, bucket_name=None):
+    def __init__(self, bucket_name=None, **kwargs):
         self.bucket_name = bucket_name or BUCKET_NAME
 
     def exists(self, remote_path):

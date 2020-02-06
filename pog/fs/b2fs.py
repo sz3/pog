@@ -21,7 +21,7 @@ class b2fs(Pogfs):
     It's also marginally easier to use.
     It would be nice if B2 had a better api.
     '''
-    def __init__(self, bucket_name=None):
+    def __init__(self, bucket_name=None, **kwargs):
         self.bucket_name = bucket_name or BUCKET_NAME
 
     def exists(self, remote_path):
