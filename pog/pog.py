@@ -325,7 +325,7 @@ class Decryptor():
 
     def dump_manifest_index(self, *inputs):
         if self.box == self.index_box:
-            self.dump_manifest(*inputs)
+            self.dump_manifest(*inputs, show_filenames=False)
             return
 
         for filename in download_list(inputs):
@@ -334,12 +334,13 @@ class Decryptor():
             for blob in mfn_index:
                 print(blob)
 
-    def dump_manifest(self, *inputs):
+    def dump_manifest(self, *inputs, show_filenames=True):
         for filename in download_list(inputs):
             print('*** {}:'.format(filename), file=sys.stderr)
             mfn = self.load_manifest(filename)
             for og_filename, info in mfn.items():
-                print('* {}:'.format(og_filename), file=sys.stderr)
+                if show_filenames:
+                    print('* {}:'.format(og_filename))
                 for blob in info['blobs']:
                     print(blob)
 

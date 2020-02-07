@@ -3,7 +3,6 @@ import random
 from glob import glob
 from os import environ, path, listdir
 from shutil import copyfile
-from subprocess import STDOUT
 from tempfile import TemporaryDirectory
 from unittest import TestCase, skipUnless
 
@@ -58,7 +57,9 @@ class KeyfileTest(TestDirMixin, TestCase):
         # check that the manifest looks good
         manifest_name = glob(path.join(self.working_dir.name, '*.mfn'))[0]
         show_mfn = self.run_command(self.decryption_flag, '--dump-manifest', manifest_name)
-        self.assertEqual(show_mfn, enc)
+        self.assertEqual(
+            show_mfn, ['* tiny_sample.txt:', enc[0], '* another_sample.txt:', enc[1]]
+        )
 
         # check the index as well
         show_mfn_index = self.run_command(self.encryption_flag, '--dump-manifest-index', manifest_name)
@@ -118,16 +119,15 @@ class KeyfileTest(TestDirMixin, TestCase):
             contents = f.read()
         self.assertEqual(contents, SAMPLE_TEXT)
 
-    def test_consistency_stderr(self):
-        # test for stdout/stderr formatting
+    def test_consistency_dump_manifest(self):
+        # test for stdout formatting
         # relevant for correlating which blobs belong to which files
         # copy over relevant files first
         for filename in [self.consistency_mfn]:
             copyfile(f'{POG_ROOT}/tests/samples/{filename}', f'{self.working_dir.name}/{filename}')
 
-        show_mfn = self.run_command(self.decryption_flag, '--dump-manifest', self.consistency_mfn, stderr=STDOUT)
+        show_mfn = self.run_command(self.decryption_flag, '--dump-manifest', self.consistency_mfn)
         self.assertEqual(show_mfn, [
-            '*** {}:'.format(self.consistency_mfn),
             '* {}:'.format('8.txt'),
             self.consistency_blobname,
         ])
@@ -140,7 +140,7 @@ class KeyfileTest(TestDirMixin, TestCase):
 
         # --dump-manifest
         show_mfn = self.run_command(self.decryption_flag, '--dump-manifest', f'test:///{self.consistency_mfn}')
-        self.assertEqual(show_mfn, [self.consistency_blobname])
+        self.assertEqual(show_mfn, ['* 8.txt:', self.consistency_blobname])
 
         # --dump-manifest-index
         show_mfn_idx = self.run_command(self.decryption_flag, '--dump-manifest-index', f'test:///{self.consistency_mfn}')
@@ -165,7 +165,12 @@ class KeyfileTest(TestDirMixin, TestCase):
         # check that the manifest looks good
         manifest_name = glob(path.join(self.working_dir.name, '*.mfn'))[0]
         show_mfn = self.run_command(self.decryption_flag, '--dump-manifest', manifest_name)
-        self.assertEqual(show_mfn, enc)
+        self.assertEqual(
+            show_mfn, [
+                '* {}:'.format(self.tiny_sample), enc[0],
+                '* {}:'.format(self.another_sample), enc[1],
+            ]
+        )
 
         # decrypt, consuming our encrypted inputs
         dec = self.run_command(self.decryption_flag, '--decrypt', '--consume', manifest_name)
@@ -236,7 +241,7 @@ class BigFileTest(TestDirMixin, TestCase):
         manifest_name = glob(path.join(self.working_dir.name, '*.mfn'))[0]
         show_mfn = self.run_command(f'--keyfile={POG_ROOT}/tests/samples/only_for_testing.encrypt', '--dump-manifest',
                                     manifest_name)
-        self.assertEqual(show_mfn, enc)
+        self.assertEqual(show_mfn, ['* big_sample.bin:'] + enc)
 
         # decrypt, consuming our encrypted inputs
         dec = self.run_command(f'--keyfile={POG_ROOT}/tests/samples/only_for_testing.encrypt', '--decrypt', '--consume',
@@ -265,7 +270,7 @@ class BigFileTest(TestDirMixin, TestCase):
         manifest_name = glob(path.join(self.working_dir.name, '*.mfn'))[0]
         show_mfn = self.run_command(f'--decryption-keyfile={POG_ROOT}/tests/samples/only_for_testing.decrypt',
                                     '--dump-manifest', manifest_name)
-        self.assertEqual(show_mfn, enc)
+        self.assertEqual(show_mfn, ['* big_sample.bin:'] + enc)
 
         # check the index as well -- make sure it's sorted
         show_mfn_index = self.run_command(f'--encryption-keyfile={POG_ROOT}/tests/samples/only_for_testing.encrypt',
@@ -302,7 +307,7 @@ class BigFileTest(TestDirMixin, TestCase):
         manifest_name = glob(path.join(self.working_dir.name, '*.mfn'))[0]
         show_mfn = self.run_command(f'--decryption-keyfile={POG_ROOT}/tests/samples/only_for_testing.decrypt',
                                     '--dump-manifest', manifest_name)
-        self.assertEqual(show_mfn, enc)
+        self.assertEqual(show_mfn, ['* big_sample.bin:'] + enc)
 
         # check the
 
