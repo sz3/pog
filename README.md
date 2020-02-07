@@ -14,3 +14,16 @@ This tool is built around symmetric encryption -- specifically `crypto_secretbox
 
 * Still in beta!
 * Don't rely on this to keep your government leaks secret!
+
+## Installation
+
+Use `pip`:
+```
+pip install pogcli
+```
+
+or from source,
+```
+python setup.py build
+python setup.py install
+```

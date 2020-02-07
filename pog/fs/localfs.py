@@ -7,7 +7,7 @@ from .pogfs import Pogfs
 
 class localfs(Pogfs):
     def __init__(self, *args, **kwargs):
-        self.root = kwargs.get('root', '')
+        self.root = kwargs.get('root') or ''
 
     def exists(self, remote_path):
         return Path(self.root, remote_path).exists()
