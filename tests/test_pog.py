@@ -139,15 +139,15 @@ class KeyfileTest(TestDirMixin, TestCase):
         fs.upload_file(f'{POG_ROOT}/tests/samples/{self.consistency_blobname}', _data_path(self.consistency_blobname))
 
         # --dump-manifest
-        show_mfn = self.run_command(self.decryption_flag, '--dump-manifest', f'test:///{self.consistency_mfn}')
+        show_mfn = self.run_command(self.decryption_flag, '--dump-manifest', f'local:///{self.consistency_mfn}')
         self.assertEqual(show_mfn, ['* 8.txt:', self.consistency_blobname])
 
         # --dump-manifest-index
-        show_mfn_idx = self.run_command(self.decryption_flag, '--dump-manifest-index', f'test:///{self.consistency_mfn}')
+        show_mfn_idx = self.run_command(self.decryption_flag, '--dump-manifest-index', f'local:///{self.consistency_mfn}')
         self.assertEqual(show_mfn_idx, [self.consistency_blobname])
 
         # --decrypt
-        dec = self.run_command(self.decryption_flag, '--decrypt', f'test:///{self.consistency_mfn}')
+        dec = self.run_command(self.decryption_flag, '--decrypt', f'local:///{self.consistency_mfn}')
         self.assertEqual(dec, [''])
 
         # read the decrypted file

@@ -25,7 +25,7 @@ class CloudCleanupTest(TestDirMixin, TestCase):
 
     def test_cleanup_dryrun(self):
         # make a file:/// repo for us to blow up
-        res = self.run_command(self.keyfile_flag, '--backup=test')
+        res = self.run_command(self.keyfile_flag, '--backup=local')
         self.assertIn('would remove 0.mfn', res)
 
         self.assertEqual(self.fs.list_files(recursive=True), [
@@ -41,7 +41,7 @@ class CloudCleanupTest(TestDirMixin, TestCase):
     @skipUnless(environ.get('DANGER'), 'dangerous test skipped unless DANGER=1')
     def test_cleanup_for_real(self):
         # make a file:/// repo for us to blow up
-        res = self.run_command(self.keyfile_flag, '--backup=test', '--reckless-abandon')
+        res = self.run_command(self.keyfile_flag, '--backup=local', '--reckless-abandon')
         self.assertIn('would remove 0.mfn', res)
 
         self.assertEqual(self.fs.list_files(recursive=True), [

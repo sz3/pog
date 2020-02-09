@@ -32,7 +32,7 @@ def get_cloud_fs(fs):
     FS = {
         'b2': b2fs,
         's3': s3fs,
-        'test': localfs,
+        'local': localfs,
     }
     return FS.get(fs)
 
