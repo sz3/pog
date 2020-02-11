@@ -47,13 +47,13 @@ python setup.py install
 		* this is what `--decryption-keyfile` and `--encryption-keyfile` do
 		* an X25519 key pair can be generated with pog-create-keypair.
 
-* the file->blob relationship is stored in an encrypted manifest file (`.mfn`), which also stores file metadata, like modified times.
-	* this can be thought of as the dictionary for the archive.
+* the file->blob relationship is stored in an encrypted manifest file (`.mfn`), which also stores file metadata -- e.g. last modified time.
+	* the `.mfn` can be thought of as the dictionary for the archive.
 	* blobs *can* be decrypted without the manifest, *IF* the blob order is correct. However, only the file contents are stored in the blobs. The original file name and file metadata will not survive the trip.
 
 * blobs are named by urlsafe base64(sha256(secret + sha256(content)). The "secret" is derived from the encryption key.
 	* the goal is to pseudo-randomize the names of the blobs, while still keeping them consistent for backups run with the same key.
-	* we want to "leak" the content hash only to the extent it's necessary to save work on successive backups (e.g. I don't need to reupload blob X, it already exists)
+	* we want to "leak" the content hash only to the extent it's necessary to save work on successive backups (e.g. "I don't need to reupload blob X, it already exists")
 	* because we use the content hash for this purpose, we can achieve some amount of file de-duplication.
 
 
