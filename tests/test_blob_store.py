@@ -50,29 +50,69 @@ class DownloadListTest(TestDirMixin, TestCase):
 
     @patch('pog.fs.pogfs.b2fs', autoSpec=True)
     @patch('pog.fs.pogfs.s3fs', autoSpec=True)
-    def test_download_yield_fs_info(self, mock_s3, mock_b2):
+    def test_download_extract(self, mock_s3, mock_b2):
         mock_b2.return_value = mock_b2
         mock_s3.return_value = mock_s3
 
         local_paths = []
         fs_infos = []
-        for f, fs_info in download_list('boring.mfn', 's3://bucket1/file.mfn', 'b2://bucket2/another.mfn',
-                                        yield_fs_info=True):
+        partials = []
+        for f, fs_info, prtl in download_list('boring.mfn', 's3://bucket1/file.mfn', 'b2://bucket2/another.mfn',
+                                                 extract=True):
             local_paths.append(f)
             fs_infos.append(fs_info)
+            partials.append(prtl)
             if f != 'boring.mfn':  # no tempfile download for local file
                 self.assertTrue(path.exists(f))
 
         self.assertEqual(local_paths[0], 'boring.mfn')
         self.assertEqual(fs_infos[0], [])
+        self.assertEqual(partials[0], None)
 
         mock_s3.assert_called_once_with('bucket1')
         mock_s3.download_file.assert_any_call(local_paths[1], 'file.mfn')
         self.assertEqual(fs_infos[1], ('s3', 'bucket1'))
+        self.assertEqual(partials[1], None)
 
         mock_b2.assert_called_once_with('bucket2')
         mock_b2.download_file.assert_any_call(local_paths[2], 'another.mfn')
         self.assertEqual(fs_infos[2], ('b2', 'bucket2'))
+        self.assertEqual(partials[2], None)
+
+        # should clean up
+        for f in local_paths:
+            self.assertFalse(path.exists(f))
+
+    @patch('pog.fs.pogfs.b2fs', autoSpec=True)
+    @patch('pog.fs.pogfs.s3fs', autoSpec=True)
+    def test_download_extract_with_partials(self, mock_s3, mock_b2):
+        mock_b2.return_value = mock_b2
+        mock_s3.return_value = mock_s3
+
+        local_paths = []
+        fs_infos = []
+        partials = []
+        for f, fs_info, prtl in download_list('boring.mfn', 'file1', 'file2', 's3://bucket1/file.mfn', 'dir/file',
+                                                 'b2://bucket2/another.mfn', extract=True):
+            local_paths.append(f)
+            fs_infos.append(fs_info)
+            partials.append(prtl)
+            if f != 'boring.mfn':  # no tempfile download for local file
+                self.assertTrue(path.exists(f))
+
+        self.assertEqual(local_paths[0], 'boring.mfn')
+        self.assertEqual(fs_infos[0], [])
+        self.assertEqual(partials[0], {'file1', 'file2'})
+
+        mock_s3.assert_called_once_with('bucket1')
+        mock_s3.download_file.assert_any_call(local_paths[1], 'file.mfn')
+        self.assertEqual(fs_infos[1], ('s3', 'bucket1'))
+        self.assertEqual(partials[1], {'dir/file'})
+
+        mock_b2.assert_called_once_with('bucket2')
+        mock_b2.download_file.assert_any_call(local_paths[2], 'another.mfn')
+        self.assertEqual(fs_infos[2], ('b2', 'bucket2'))
+        self.assertEqual(partials[2], None)
 
         # should clean up
         for f in local_paths:

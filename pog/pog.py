@@ -13,16 +13,18 @@ Usage:
   pog (-h | --help)
 
 Examples:
-  python -m pog.pog /path/to/file1 /path/to/file2 ...
-  python -m pog.pog --chunk-size=50MB bigfile
-  python -m pog.pog --decrypt 2019-10-31T12:34:56.012345.mfn
+  python -m pog.pog /path/to/file1 /path/to/file2
+  pog /path/to/file1 /path/to/file2
+  pog --chunk-size=50MB bigfile
+  pog --decrypt 2019-10-31T12:34:56.012345.mfn
 
-  python -m pog.pog /home/myfile.original > outputs.txt
-  python -m pog.pog --decrypt $(cat outputs.txt) > myfile.copy
+  pog /home/myfile.original > outputs.txt
+  pog --decrypt $(cat outputs.txt) > myfile.copy
 
-  python -m pog.pog --encryption-keyfile=pki.encrypt /path/to/file*
-  python -m pog.pog --decryption-keyfile=pki.decrypt --consume 2019-10-31T12:34:56.012345.mfn
-  python -m pog.pog --encryption-keyfile=pki.encrypt --dump-manifest-index 2019-*
+  pog --encryption-keyfile=pki.encrypt /path/to/file*
+  pog --encryption-keyfile=pki.encrypt --dump-manifest-index 2019-*
+  pog --decryption-keyfile=pki.decrypt s3://mybucket/2019-10-31T12:34:56.012345.mfn
+  pog --decryption-keyfile=pki.decrypt --consume 2019-10-31T12:34:56.012345.mfn
 
 Options:
   -h --help                        Show this help.
@@ -345,11 +347,13 @@ class Decryptor():
                     print(blob)
 
     def decrypt(self, *inputs):
-        for filename, fs_info in download_list(inputs, yield_fs_info=True):
+        for filename, fs_info, partials in download_list(inputs, extract=True):
             decompressor = zstd.ZstdDecompressor()
             if filename.endswith('.mfn'):
                 mfn = self.load_manifest(filename)
                 for og_filename, info in mfn.items():
+                    if partials and og_filename not in partials:
+                        continue
                     copy_filename = path.normpath('./{}'.format(og_filename))
                     dir_path = path.dirname(copy_filename)
                     if dir_path:

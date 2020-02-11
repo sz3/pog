@@ -4,6 +4,7 @@ from subprocess import check_output
 from tempfile import NamedTemporaryFile
 from urllib.parse import urlparse
 
+from collections import defaultdict
 from pog.fs.pogfs import get_cloud_fs
 
 
@@ -25,7 +26,30 @@ class download_list():
     def __init__(self, *args, **kwargs):
         self.filenames = _flatten(*args)
         self.fs_info = kwargs.get('fs_info', [])
-        self.yield_fs_info = kwargs.get('yield_fs_info', False)
+        self.partials = {}
+
+        # `extract` mode does two things:
+        # 1. iterator returns a tuple with fs_info in it
+        # 2. consumes non-mfn arguments and returns them with the preceding mfn, if there is one
+        self.extract = kwargs.get('extract', False)
+        if self.extract:
+            self.filenames, self.partials = self._determine_partials(self.filenames)
+
+    def _determine_partials(self, filenames):
+        if not self.extract:
+            return
+
+        partials = defaultdict(set)
+        current_mfn = None
+        for f in list(filenames):
+            if f.endswith('.mfn'):
+                current_mfn = f
+                continue
+            if not current_mfn:
+                continue
+            partials[current_mfn].add(f)
+            filenames.remove(f)
+        return filenames, dict(partials)
 
     def __iter__(self):
         self.it = iter(self.filenames)
@@ -38,8 +62,10 @@ class download_list():
                 pass
         try:
             filename = next(self.it)
+            partials = self.partials.get(filename)
+
             filename, self.tempfile, fs_info = self._download_if_necessary(filename, *self.fs_info)
-            return filename if not self.yield_fs_info else (filename, fs_info)
+            return filename if not self.extract else (filename, fs_info, partials)
         except StopIteration:
             raise
 
