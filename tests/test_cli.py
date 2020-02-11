@@ -59,3 +59,19 @@ class PogCliTest(TestDirMixin, TestCase):
             ['python', '-m', 'pog.pog', '--dump-manifest-index', 'my.mfn', '--encryption-keyfile=foo.encrypt'],
             env=env
         )
+
+    @patch('pog.cli.check_output', autospec=True)
+    def test_decrypt(self, mock_run):
+        mock_run.return_value = b'hooray\n'
+
+        cli = PogCli()
+        cli.set_keyfiles(['foo.decrypt'])
+        res = list(cli.decrypt('my.mfn'))
+        self.assertEqual(res, ['hooray'])
+
+        env = dict(environ)
+        env['PYTHONPATH'] = POG_ROOT
+        mock_run.assert_called_once_with(
+            ['python', '-m', 'pog.pog', '--decrypt', 'my.mfn', '--decryption-keyfile=foo.decrypt'],
+            env=env
+        )

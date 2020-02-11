@@ -58,7 +58,7 @@ class DownloadListTest(TestDirMixin, TestCase):
         fs_infos = []
         partials = []
         for f, fs_info, prtl in download_list('boring.mfn', 's3://bucket1/file.mfn', 'b2://bucket2/another.mfn',
-                                                 extract=True):
+                                              extract=True):
             local_paths.append(f)
             fs_infos.append(fs_info)
             partials.append(prtl)
@@ -93,7 +93,7 @@ class DownloadListTest(TestDirMixin, TestCase):
         fs_infos = []
         partials = []
         for f, fs_info, prtl in download_list('boring.mfn', 'file1', 'file2', 's3://bucket1/file.mfn', 'dir/file',
-                                                 'b2://bucket2/another.mfn', extract=True):
+                                              'b2://bucket2/another.mfn', extract=True):
             local_paths.append(f)
             fs_infos.append(fs_info)
             partials.append(prtl)

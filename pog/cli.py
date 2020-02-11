@@ -62,3 +62,6 @@ class PogCli():
 
     def dumpManifestIndex(self, mfn):
         yield from self.run_command('--dump-manifest-index', mfn)
+
+    def decrypt(self, mfn, **kwargs):
+        yield from self.run_command('--decrypt', mfn, **kwargs)
