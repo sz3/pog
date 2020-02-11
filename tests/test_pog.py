@@ -43,8 +43,8 @@ class KeyfileTest(TestDirMixin, TestCase):
     encryption_flag = f'--keyfile={POG_ROOT}/tests/samples/only_for_testing.encrypt'
     decryption_flag = encryption_flag
 
-    tiny_sample_blobname = 'Fx1xB8L8L1cRPdBzkr-L8mzPusnzEBjhrQseB3DaCU4='
-    another_sample_blobname = 'vyGFr38Y8A0xhonhxuiZXkjS8vIVjY6VDH0-BiLJuXo='
+    tiny_sample_blobname = 'BvbQeMboxw1jFDXe_ed5QsDWay5kvtlZ_qx7buz_z2M='
+    another_sample_blobname = 'vuWyVoUolWk2qRZ-48mvEoTuR5_SuzrN8uO6qusRZSE='
 
     consistency_mfn = 'keyfile-sample.mfn'
     consistency_blobname = 'US-1DnY1AVF1huiGj10G9SEGwCHa4GVxJcBnaCuAcXk='
@@ -196,8 +196,8 @@ class AsymmetricCryptoTest(KeyfileTest):
     encryption_flag = f'--encryption-keyfile={POG_ROOT}/tests/samples/only_for_testing.encrypt'
     decryption_flag = f'--decryption-keyfile={POG_ROOT}/tests/samples/only_for_testing.decrypt'
 
-    tiny_sample_blobname = 'p6VsgAeMwIwCGbnuZ7lZqRPX-Ur0pT3nwsoKX2mp3Bo='
-    another_sample_blobname = '1k05nlUe9UNx1-MDASPQgwAX0jKZwY4aaQvowhgUv1Q='
+    tiny_sample_blobname = 'Fx1xB8L8L1cRPdBzkr-L8mzPusnzEBjhrQseB3DaCU4='
+    another_sample_blobname = 'vyGFr38Y8A0xhonhxuiZXkjS8vIVjY6VDH0-BiLJuXo='
 
     consistency_mfn = 'asymmetric-sample.mfn'
     consistency_blobname = 'hq3mhX2mG_i_aVy2wv6jMGC5DjlerpvJ8O1Y_iayfPY='
@@ -233,8 +233,8 @@ class BigFileTest(TestDirMixin, TestCase):
         # encrypt our sample file
         enc = self.run_command(f'--keyfile={POG_ROOT}/tests/samples/only_for_testing.encrypt', BigFileTest.big_sample)
         self.assertEqual(enc, [
-            'RiOpsEQbQpxrBvXL1s047hq54EhFXxWqwag-vMuiRfc=',
-            'YdK86P4e2191CxVBhZwvvPtwOLU6Ve1NzMhwLjxVXqg=',
+            'xyQWj-UXXZpwWXPF2c5_MsBm3cTfZFXayUVLLMlkt4Y=',
+            'HXBJ_N4EM2rywLdOWT02hccp4c_oLk0QyD2lc3vUttw=',
         ])
 
         # check that the manifest looks good
@@ -262,8 +262,8 @@ class BigFileTest(TestDirMixin, TestCase):
         enc = self.run_command(f'--encryption-keyfile={POG_ROOT}/tests/samples/only_for_testing.encrypt',
                                BigFileTest.big_sample)
         self.assertEqual(enc, [
-            'Yb5MnLUD6aV9EOd2F7WEYzil6ephYyVeantK0uzcSPo=',
-            'Ry2498AqCRLDQQj506moBXRiBLPd3ecTl-y5vvnGO0s=',
+            'RiOpsEQbQpxrBvXL1s047hq54EhFXxWqwag-vMuiRfc=',
+            'YdK86P4e2191CxVBhZwvvPtwOLU6Ve1NzMhwLjxVXqg=',
         ])
 
         # check that the manifest looks good
@@ -298,9 +298,9 @@ class BigFileTest(TestDirMixin, TestCase):
             '--chunk-size=50MB'
         )
         self.assertEqual(enc, [
-            'vC5TqoeAz94lQ2Lnaiq55XdfMWQGPI4TZ1XeykVFXkI=',
-            '_eqO1xjkc1mvww7iLkF_AAlZUAWw3yojKMD4EqQhU7Q=',
-            'Ry2498AqCRLDQQj506moBXRiBLPd3ecTl-y5vvnGO0s=',
+            'PURfe1ei1aqpPRarpAfKkcKPRSHdo5hPH-bvfYND2KM=',
+            'nnL4ta-BChpb36CIFeZUG4lJLiz8l0YVv94IaABcgyU=',
+            'YdK86P4e2191CxVBhZwvvPtwOLU6Ve1NzMhwLjxVXqg=',
         ])
 
         # check that the manifest looks good

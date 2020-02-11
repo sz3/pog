@@ -153,7 +153,7 @@ def get_secret(keyfile=None):
 class Encryptor():
     def __init__(self, secret, crypto_box=None, chunk_size=100000000, compresslevel=3, store_absolute_paths=False,
                  blob_store=None):
-        self.secret = secret
+        self.secret = sha256(secret).digest()
         self.index_box = nacl_SecretBox(secret)
         self.box = crypto_box or self.index_box
         self.chunk_size = chunk_size
@@ -370,7 +370,7 @@ class Decryptor():
 
 
 def main():
-    args = docopt(__doc__, version='Pog 0.1.0')
+    args = docopt(__doc__, version='Pog 0.1.1')
     chunk_size = parse_size(args.get('--chunk-size', '100MB'))
     compresslevel = int(args.get('--compresslevel', '3'))
     store_absolute_paths = args.get('--store-absolute-paths')
