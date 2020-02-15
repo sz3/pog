@@ -71,7 +71,7 @@ class KeyfileTest(TestDirMixin, TestCase):
 
         # decrypt, consuming our encrypted inputs
         dec = self.run_command(self.decryption_flag, '--decrypt', '--consume', manifest_name)
-        self.assertEqual(dec, [''])
+        self.assertEqual(dec, ['* 1/2: tiny_sample.txt', '* 2/2: another_sample.txt'])
 
         # validate the directory looks like we expect it to
         paths = listdir(self.working_dir.name)
@@ -98,7 +98,7 @@ class KeyfileTest(TestDirMixin, TestCase):
             dec = self.run_command(
                 self.decryption_flag, '--decrypt', f'{POG_ROOT}/tests/samples/{self.consistency_blobname}', stdout=f
             )
-            self.assertEqual(dec, 0)
+            self.assertEqual(dec, [])
 
         # read the decrypted file
         with open(path.join(self.working_dir.name, 'out.txt'), 'rb') as f:
@@ -112,7 +112,7 @@ class KeyfileTest(TestDirMixin, TestCase):
             copyfile(f'{POG_ROOT}/tests/samples/{filename}', f'{self.working_dir.name}/{filename}')
 
         dec = self.run_command(self.decryption_flag, '--decrypt', '--consume', self.consistency_mfn)
-        self.assertEqual(dec, [''])
+        self.assertEqual(dec, ['* 1/1: 8.txt'])
 
         # read the decrypted file
         with open(path.join(self.working_dir.name, '8.txt'), 'rb') as f:
@@ -148,7 +148,7 @@ class KeyfileTest(TestDirMixin, TestCase):
 
         # --decrypt
         dec = self.run_command(self.decryption_flag, '--decrypt', f'local:///{self.consistency_mfn}')
-        self.assertEqual(dec, [''])
+        self.assertEqual(dec, ['* 1/1: 8.txt'])
 
         # read the decrypted file
         with open(path.join(self.working_dir.name, '8.txt'), 'rb') as f:
@@ -174,7 +174,10 @@ class KeyfileTest(TestDirMixin, TestCase):
 
         # decrypt, consuming our encrypted inputs
         dec = self.run_command(self.decryption_flag, '--decrypt', '--consume', manifest_name)
-        self.assertEqual(dec, [''])
+        self.assertEqual(dec, [
+            '* 1/2: {}'.format(self.tiny_sample),
+            '* 2/2: {}'.format(self.another_sample),
+        ])
 
         # validate the directory looks like we expect it to
         # since we saved the absolute paths, our expected full path will be... interesting
@@ -246,7 +249,7 @@ class BigFileTest(TestDirMixin, TestCase):
         # decrypt, consuming our encrypted inputs
         dec = self.run_command(f'--keyfile={POG_ROOT}/tests/samples/only_for_testing.encrypt', '--decrypt', '--consume',
                                manifest_name)
-        self.assertEqual(dec, [''])
+        self.assertEqual(dec, ['* 1/1: big_sample.bin'])
 
         # check that the directory looks good
         paths = listdir(self.working_dir.name)
@@ -280,7 +283,7 @@ class BigFileTest(TestDirMixin, TestCase):
         # decrypt, consuming our encrypted inputs
         dec = self.run_command(f'--decryption-keyfile={POG_ROOT}/tests/samples/only_for_testing.decrypt', '--consume',
                                manifest_name)
-        self.assertEqual(dec, [''])
+        self.assertEqual(dec, ['* 1/1: big_sample.bin'])
 
         # check that the directory looks good
         paths = listdir(self.working_dir.name)
@@ -314,7 +317,7 @@ class BigFileTest(TestDirMixin, TestCase):
         # decrypt, consuming our encrypted inputs
         dec = self.run_command(f'--decryption-keyfile={POG_ROOT}/tests/samples/only_for_testing.decrypt', '--consume',
                                manifest_name)
-        self.assertEqual(dec, [''])
+        self.assertEqual(dec, ['* 1/1: big_sample.bin'])
 
         # check that the directory looks good
         paths = listdir(self.working_dir.name)

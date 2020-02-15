@@ -1,4 +1,5 @@
 from os import environ
+from subprocess import PIPE
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -28,9 +29,15 @@ class PogCliTest(TestDirMixin, TestCase):
         self.assertEqual(cli.config.get('encryption-keyfile'), None)
         self.assertEqual(cli.config.get('keyfile'), 'other.keyfile')
 
-    @patch('pog.cli.check_output', autospec=True)
+    @patch('pog.cli.Popen', autospec=True)
     def test_dump_manifest(self, mock_run):
-        mock_run.return_value = b'* 1.txt:\nabcdef12345\nfghjkl34567\n'
+        mock_run.return_value = mock_run
+        mock_run.__enter__.return_value = mock_run
+        mock_run.stdout = [
+            b'* 1.txt:\n',
+            b'abcdef12345\n',
+            b'fghjkl34567\n',
+        ]
 
         cli = PogCli()
         cli.set_keyfiles(['foo.decrypt'])
@@ -41,12 +48,17 @@ class PogCliTest(TestDirMixin, TestCase):
         env['PYTHONPATH'] = POG_ROOT
         mock_run.assert_called_once_with(
             ['python', '-m', 'pog.pog', '--dump-manifest', 'my.mfn', '--decryption-keyfile=foo.decrypt'],
-            env=env
+            env=env, stdout=PIPE,
         )
 
-    @patch('pog.cli.check_output', autospec=True)
+    @patch('pog.cli.Popen', autospec=True)
     def test_dump_manifest_index(self, mock_run):
-        mock_run.return_value = b'abcdef12345\nfghjkl34567\n'
+        mock_run.return_value = mock_run
+        mock_run.__enter__.return_value = mock_run
+        mock_run.stdout = [
+            b'abcdef12345\n',
+            b'fghjkl34567\n',
+        ]
 
         cli = PogCli()
         cli.set_keyfiles(['foo.encrypt'])
@@ -57,12 +69,14 @@ class PogCliTest(TestDirMixin, TestCase):
         env['PYTHONPATH'] = POG_ROOT
         mock_run.assert_called_once_with(
             ['python', '-m', 'pog.pog', '--dump-manifest-index', 'my.mfn', '--encryption-keyfile=foo.encrypt'],
-            env=env
+            env=env, stdout=PIPE,
         )
 
-    @patch('pog.cli.check_output', autospec=True)
+    @patch('pog.cli.Popen', autospec=True)
     def test_decrypt(self, mock_run):
-        mock_run.return_value = b'hooray\n'
+        mock_run.return_value = mock_run
+        mock_run.__enter__.return_value = mock_run
+        mock_run.stdout = [b'hooray\n']
 
         cli = PogCli()
         cli.set_keyfiles(['foo.decrypt'])
@@ -73,5 +87,5 @@ class PogCliTest(TestDirMixin, TestCase):
         env['PYTHONPATH'] = POG_ROOT
         mock_run.assert_called_once_with(
             ['python', '-m', 'pog.pog', '--decrypt', 'my.mfn', '--decryption-keyfile=foo.decrypt'],
-            env=env
+            env=env, stdout=PIPE,
         )

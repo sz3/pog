@@ -129,6 +129,10 @@ def blobname(content, secret):
     return urlsafe_b64encode(sha256(secret + content_hash).digest())
 
 
+def print_progress(count, total, filename):
+    print('* {}/{}: {}'.format(count, total, filename))
+
+
 def get_secret(keyfile=None):
     if keyfile:
         with open(keyfile, 'rb') as f:
@@ -351,7 +355,7 @@ class Decryptor():
             decompressor = zstd.ZstdDecompressor()
             if filename.endswith('.mfn'):
                 mfn = self.load_manifest(filename)
-                for og_filename, info in mfn.items():
+                for count, (og_filename, info) in enumerate(mfn.items()):
                     if partials and og_filename not in partials:
                         continue
                     copy_filename = path.normpath('./{}'.format(og_filename))
@@ -362,11 +366,15 @@ class Decryptor():
                         for blob in download_list(info['blobs'], fs_info=fs_info):
                             self.decrypt_single_blob(blob, out=decompress_out)
                     utime(copy_filename, times=(info['atime'], info['mtime']))
+                    # print progress to stdout
+                    print_progress(count+1, len(mfn), og_filename)
                 if self.consume:
                     remove(filename)
             else:
                 with decompressor.stream_writer(_stdout()) as decompress_out:
                     self.decrypt_single_blob(filename, out=decompress_out)
+
+
 
 
 def main():

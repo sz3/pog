@@ -1,3 +1,5 @@
+.PHONY: pypi clean test flake
+
 pypi:
 	python setup.py sdist
 	twine upload dist/*.tar.gz
