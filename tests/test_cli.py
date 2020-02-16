@@ -47,7 +47,7 @@ class PogCliTest(TestDirMixin, TestCase):
         env = dict(environ)
         env['PYTHONPATH'] = POG_ROOT
         mock_run.assert_called_once_with(
-            ['python', '-m', 'pog.pog', '--dump-manifest', 'my.mfn', '--decryption-keyfile=foo.decrypt'],
+            ['python', '-u', '-m', 'pog.pog', '--dump-manifest', 'my.mfn', '--decryption-keyfile=foo.decrypt'],
             env=env, stdout=PIPE,
         )
 
@@ -68,7 +68,7 @@ class PogCliTest(TestDirMixin, TestCase):
         env = dict(environ)
         env['PYTHONPATH'] = POG_ROOT
         mock_run.assert_called_once_with(
-            ['python', '-m', 'pog.pog', '--dump-manifest-index', 'my.mfn', '--encryption-keyfile=foo.encrypt'],
+            ['python', '-u', '-m', 'pog.pog', '--dump-manifest-index', 'my.mfn', '--encryption-keyfile=foo.encrypt'],
             env=env, stdout=PIPE,
         )
 
@@ -76,16 +76,22 @@ class PogCliTest(TestDirMixin, TestCase):
     def test_decrypt(self, mock_run):
         mock_run.return_value = mock_run
         mock_run.__enter__.return_value = mock_run
-        mock_run.stdout = [b'hooray\n']
+        mock_run.stdout = [
+            b'* 1/2: foo.txt\n',
+            b'* 2/2: bar.txt\n',
+        ]
 
         cli = PogCli()
         cli.set_keyfiles(['foo.decrypt'])
         res = list(cli.decrypt('my.mfn'))
-        self.assertEqual(res, ['hooray'])
+        self.assertEqual(res, [
+            {'current': 1, 'filename': 'foo.txt', 'total': 2},
+            {'current': 2, 'filename': 'bar.txt', 'total': 2}
+        ])
 
         env = dict(environ)
         env['PYTHONPATH'] = POG_ROOT
         mock_run.assert_called_once_with(
-            ['python', '-m', 'pog.pog', '--decrypt', 'my.mfn', '--decryption-keyfile=foo.decrypt'],
+            ['python', '-u', '-m', 'pog.pog', '--decrypt', 'my.mfn', '--decryption-keyfile=foo.decrypt'],
             env=env, stdout=PIPE,
         )

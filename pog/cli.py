@@ -70,4 +70,9 @@ class PogCli():
         yield from self.run('--dump-manifest-index', mfn)
 
     def decrypt(self, mfn, **kwargs):
-        yield from self.run('--decrypt', mfn, **kwargs)
+        for line in self.run('--decrypt', mfn, **kwargs):
+            if not line.startswith('* '):
+                continue
+            progress, filename = line[2:].split(':', 1)
+            current, total = progress.split('/')
+            yield {'current': int(current), 'total': int(total), 'filename': filename.strip()}
