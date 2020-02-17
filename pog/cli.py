@@ -11,12 +11,9 @@ class PogCli():
         self.config = config or {}
         self.kwargs = kwargs or {}
 
-    def set_keyfiles(self, keyfiles):
+    def set_keyfiles(self, *keyfiles):
         for k in ('keyfile', 'decryption-keyfile', 'encryption-keyfile'):
             self.config.pop(k, None)
-
-        if not keyfiles:
-            return
 
         for f in keyfiles:
             if f.endswith('.decrypt'):
@@ -76,3 +73,8 @@ class PogCli():
             progress, filename = line[2:].split(':', 1)
             current, total = progress.split('/')
             yield {'current': int(current), 'total': int(total), 'filename': filename.strip()}
+
+    def encrypt(self, inputs, destinations, **kwargs):
+        save_to = '--save-to=' + ','.join(destinations)
+        for line in self.run(save_to, *inputs, **kwargs):
+            yield line

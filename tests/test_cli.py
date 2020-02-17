@@ -14,20 +14,26 @@ class PogCliTest(TestDirMixin, TestCase):
 
         # pick decryption file
         for i in range(3):
-            cli.set_keyfiles(['foo.encrypt', 'foo.decrypt', 'other.keyfile'])
+            cli.set_keyfiles('foo.encrypt', 'foo.decrypt', 'other.keyfile')
             self.assertEqual(cli.config.get('decryption-keyfile'), 'foo.decrypt')
             self.assertEqual(cli.config.get('encryption-keyfile'), None)
             self.assertEqual(cli.config.get('keyfile'), None)
 
-        cli.set_keyfiles(['foo.encrypt', 'other.keyfile'])
+        cli.set_keyfiles('foo.encrypt', 'other.keyfile')
         self.assertEqual(cli.config.get('decryption-keyfile'), None)
         self.assertEqual(cli.config.get('encryption-keyfile'), 'foo.encrypt')
         self.assertEqual(cli.config.get('keyfile'), None)
 
-        cli.set_keyfiles(['other.keyfile', 'second.keyfile'])
+        cli.set_keyfiles('other.keyfile', 'second.keyfile')
         self.assertEqual(cli.config.get('decryption-keyfile'), None)
         self.assertEqual(cli.config.get('encryption-keyfile'), None)
         self.assertEqual(cli.config.get('keyfile'), 'other.keyfile')
+
+        # clear
+        cli.set_keyfiles()
+        self.assertEqual(cli.config.get('decryption-keyfile'), None)
+        self.assertEqual(cli.config.get('encryption-keyfile'), None)
+        self.assertEqual(cli.config.get('keyfile'), None)
 
     @patch('pog.cli.Popen', autospec=True)
     def test_dump_manifest(self, mock_run):
@@ -40,7 +46,7 @@ class PogCliTest(TestDirMixin, TestCase):
         ]
 
         cli = PogCli()
-        cli.set_keyfiles(['foo.decrypt'])
+        cli.set_keyfiles('foo.decrypt')
         res = cli.dumpManifest('my.mfn')
         self.assertEqual(res, {'1.txt': ['abcdef12345', 'fghjkl34567']})
 
@@ -61,7 +67,7 @@ class PogCliTest(TestDirMixin, TestCase):
         ]
 
         cli = PogCli()
-        cli.set_keyfiles(['foo.encrypt'])
+        cli.set_keyfiles('foo.encrypt')
         res = list(cli.dumpManifestIndex('my.mfn'))
         self.assertEqual(res, ['abcdef12345', 'fghjkl34567'])
 
@@ -82,7 +88,7 @@ class PogCliTest(TestDirMixin, TestCase):
         ]
 
         cli = PogCli()
-        cli.set_keyfiles(['foo.decrypt'])
+        cli.set_keyfiles('foo.decrypt')
         res = list(cli.decrypt('my.mfn'))
         self.assertEqual(res, [
             {'current': 1, 'filename': 'foo.txt', 'total': 2},
