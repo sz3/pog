@@ -1,10 +1,11 @@
 import glob
 import os
 
-'''
-normalizes a list of files, dirs, and patterns into a list of files
-'''
+
 def local_file_list(*args, **kwargs):
+    '''
+    normalizes a list of files, dirs, and patterns into a list of files
+    '''
     all_files = set()  # avoid dups
     for path in args:
         if os.path.isfile(path):
