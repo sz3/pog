@@ -167,6 +167,24 @@ class BlobStoreTest(TestDirMixin, TestCase):
             pass
         super().tearDown()
 
+    def test_parse_save_to(self):
+        bs = BlobStore()
+        self.assertEqual(bs._parse_save_to('b2'), [('b2', None)])
+        self.assertEqual(bs._parse_save_to('b2:bucket2'), [('b2', 'bucket2')])
+        self.assertEqual(bs._parse_save_to('b2://bucket2'), [('b2', 'bucket2')])
+        self.assertEqual(bs._parse_save_to('b2://bucket2/'), [('b2', 'bucket2')])
+        self.assertEqual(bs._parse_save_to('local:/home/user/'), [('local', '/home/user')])
+        self.assertEqual(bs._parse_save_to('./local-save.sh'), [('./local-save.sh', None)])
+        self.assertEqual(bs._parse_save_to('b2,s3'), [('b2', None), ('s3', None)])
+        self.assertEqual(bs._parse_save_to(
+            'b2,s3,./local-save.sh'),
+            [('b2', None), ('s3', None), ('./local-save.sh', None)],
+        )
+        self.assertEqual(bs._parse_save_to(
+            'b2,b2:onebuck/,b2://twobucks,s3://fitty,local:/home/user/'),
+            [('b2', None), ('b2', 'onebuck'), ('b2', 'twobucks'), ('s3', 'fitty'), ('local', '/home/user')],
+        )
+
     def test_default(self):
         dst = '/path/will/be/ignored/BlobStoreTest.test_default.txt'
         bs = BlobStore()

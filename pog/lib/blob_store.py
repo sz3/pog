@@ -96,7 +96,24 @@ class download_list():
 
 class BlobStore():
     def __init__(self, save_to=None):
-        self.save_to = [t.strip() for t in save_to.split(',')] if save_to else None
+        self.save_to = self._parse_save_to(save_to)
+
+    def _parse_save_to(self, save_to=None):
+        if not save_to:
+            return None
+
+        dests = []
+        for line in save_to.split(','):
+            line = line.strip()
+            if ':' not in line:  # scripts, etc
+                d = (line, None)
+            else:
+                target, bucket = line.split(':', 1)
+                if bucket.startswith('//'):
+                    bucket = bucket[2:]
+                d = (target, bucket.rstrip('/'))
+            dests.append(d)
+        return dests
 
     def save(self, name, temp_path):
         if not self.save_to:
@@ -104,13 +121,13 @@ class BlobStore():
             copyfile(temp_path, name)
             return
 
-        for target in self.save_to:
+        for target, bucket in self.save_to:
             fs = get_cloud_fs(target)
             if not fs:
                 check_output([target, name, temp_path])
                 continue
 
-            fs = fs()
+            fs = fs(bucket)
             if not fs.exists(name):
                 fs.upload_file(temp_path, name)
 

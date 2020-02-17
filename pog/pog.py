@@ -21,7 +21,7 @@ Examples:
   pog /home/myfile.original > outputs.txt
   pog --decrypt $(cat outputs.txt) > myfile.copy
 
-  pog --encryption-keyfile=pki.encrypt /path/to/file*
+  pog --encryption-keyfile=pki.encrypt /path/to/file* --save-to=s3://mybucket,b2://myotherbucket
   pog --encryption-keyfile=pki.encrypt --dump-manifest-index 2019-*
   pog --decryption-keyfile=pki.decrypt s3://mybucket/2019-10-31T12:34:56.012345.mfn
   pog --decryption-keyfile=pki.decrypt --consume 2019-10-31T12:34:56.012345.mfn
