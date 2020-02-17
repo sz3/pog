@@ -57,6 +57,7 @@ from docopt import docopt
 from humanfriendly import parse_size
 
 from pog.lib.blob_store import BlobStore, download_list
+from pog.lib.local_file_list import local_file_list
 from pog.lib.secret import pass_to_hash
 
 
@@ -264,7 +265,7 @@ class Encryptor():
 
     def encrypt(self, *inputs):
         mfn = dict()
-        for filename in inputs:
+        for filename in local_file_list(*inputs):
             print('*** {}:'.format(filename), file=sys.stderr)
             outputs = []
             for temp_path in self.encrypt_single_file(filename):
