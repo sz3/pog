@@ -378,7 +378,7 @@ class Decryptor():
 
 
 def main():
-    args = docopt(__doc__, version='Pog 0.1.1')
+    args = docopt(__doc__, version='Pog 0.1.2')
     chunk_size = parse_size(args.get('--chunk-size', '100MB'))
     compresslevel = int(args.get('--compresslevel', '3'))
     store_absolute_paths = args.get('--store-absolute-paths')
