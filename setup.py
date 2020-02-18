@@ -27,6 +27,10 @@ setup(
         'PyNaCl>=1.3.0',
         'zstandard>=0.11.1',
     ],
+    extras_require={
+        'b2': ['b2'],
+        's3': ['boto3'],
+    },
 
     description='Pretty Ok Gncryption',
     long_description=(
