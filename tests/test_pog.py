@@ -277,20 +277,22 @@ class BigFileTest(TestDirMixin, TestCase):
         # encrypt our sample file
         enc = self.run_command(f'--keyfile={POG_ROOT}/tests/samples/only_for_testing.encrypt', BigFileTest.big_sample)
         self.assertEqual(enc, [
+            f'*** 1/1: {self.big_sample}',
             'xyQWj-UXXZpwWXPF2c5_MsBm3cTfZFXayUVLLMlkt4Y=',
             'HXBJ_N4EM2rywLdOWT02hccp4c_oLk0QyD2lc3vUttw=',
         ])
+        blobs = [l for l in enc if not l.startswith('***')]
 
         # check that the manifest looks good
         manifest_name = glob(path.join(self.working_dir.name, '*.mfn'))[0]
         show_mfn = self.run_command(f'--keyfile={POG_ROOT}/tests/samples/only_for_testing.encrypt', '--dump-manifest',
                                     manifest_name)
-        self.assertEqual(show_mfn, ['* big_sample.bin:'] + enc)
+        self.assertEqual(show_mfn, ['* big_sample.bin:'] + blobs)
 
         # decrypt, consuming our encrypted inputs
         dec = self.run_command(f'--keyfile={POG_ROOT}/tests/samples/only_for_testing.encrypt', '--decrypt', '--consume',
                                manifest_name)
-        self.assertEqual(dec, ['* 1/1: big_sample.bin'])
+        self.assertEqual(dec, ['*** 1/1: big_sample.bin'])
 
         # check that the directory looks good
         paths = listdir(self.working_dir.name)
@@ -306,25 +308,27 @@ class BigFileTest(TestDirMixin, TestCase):
         enc = self.run_command(f'--encryption-keyfile={POG_ROOT}/tests/samples/only_for_testing.encrypt',
                                BigFileTest.big_sample)
         self.assertEqual(enc, [
+            f'*** 1/1: {self.big_sample}',
             'RiOpsEQbQpxrBvXL1s047hq54EhFXxWqwag-vMuiRfc=',
             'YdK86P4e2191CxVBhZwvvPtwOLU6Ve1NzMhwLjxVXqg=',
         ])
+        blobs = [l for l in enc if not l.startswith('***')]
 
         # check that the manifest looks good
         manifest_name = glob(path.join(self.working_dir.name, '*.mfn'))[0]
         show_mfn = self.run_command(f'--decryption-keyfile={POG_ROOT}/tests/samples/only_for_testing.decrypt',
                                     '--dump-manifest', manifest_name)
-        self.assertEqual(show_mfn, ['* big_sample.bin:'] + enc)
+        self.assertEqual(show_mfn, ['* big_sample.bin:'] + blobs)
 
         # check the index as well -- make sure it's sorted
         show_mfn_index = self.run_command(f'--encryption-keyfile={POG_ROOT}/tests/samples/only_for_testing.encrypt',
                                           '--dump-manifest-index', manifest_name)
-        self.assertEqual(show_mfn_index, sorted(enc))
+        self.assertEqual(show_mfn_index, sorted(blobs))
 
         # decrypt, consuming our encrypted inputs
         dec = self.run_command(f'--decryption-keyfile={POG_ROOT}/tests/samples/only_for_testing.decrypt', '--consume',
                                manifest_name)
-        self.assertEqual(dec, ['* 1/1: big_sample.bin'])
+        self.assertEqual(dec, ['*** 1/1: big_sample.bin'])
 
         # check that the directory looks good
         paths = listdir(self.working_dir.name)
@@ -342,23 +346,25 @@ class BigFileTest(TestDirMixin, TestCase):
             '--chunk-size=50MB'
         )
         self.assertEqual(enc, [
+            f'*** 1/1: {self.big_sample}',
             'PURfe1ei1aqpPRarpAfKkcKPRSHdo5hPH-bvfYND2KM=',
             'nnL4ta-BChpb36CIFeZUG4lJLiz8l0YVv94IaABcgyU=',
             'YdK86P4e2191CxVBhZwvvPtwOLU6Ve1NzMhwLjxVXqg=',
         ])
+        blobs = [l for l in enc if not l.startswith('***')]
 
         # check that the manifest looks good
         manifest_name = glob(path.join(self.working_dir.name, '*.mfn'))[0]
         show_mfn = self.run_command(f'--decryption-keyfile={POG_ROOT}/tests/samples/only_for_testing.decrypt',
                                     '--dump-manifest', manifest_name)
-        self.assertEqual(show_mfn, ['* big_sample.bin:'] + enc)
+        self.assertEqual(show_mfn, ['* big_sample.bin:'] + blobs)
 
         # check the
 
         # decrypt, consuming our encrypted inputs
         dec = self.run_command(f'--decryption-keyfile={POG_ROOT}/tests/samples/only_for_testing.decrypt', '--consume',
                                manifest_name)
-        self.assertEqual(dec, ['* 1/1: big_sample.bin'])
+        self.assertEqual(dec, ['*** 1/1: big_sample.bin'])
 
         # check that the directory looks good
         paths = listdir(self.working_dir.name)
