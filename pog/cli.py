@@ -18,11 +18,13 @@ class PogCli():
         for f in keyfiles:
             if f.endswith('.decrypt'):
                 self.config['decryption-keyfile'] = f
-                return
 
         for f in keyfiles:
             if f.endswith('.encrypt'):
                 self.config['encryption-keyfile'] = f
+
+        for k in ('decryption-keyfile', 'encryption-keyfile'):
+            if k in self.config:
                 return
 
         for f in keyfiles:
@@ -30,7 +32,8 @@ class PogCli():
             return
 
     def run(self, *args, **kwargs):
-        full_args = list(self.cmd) + list(args) + self._flatten_config()
+        restrict_config = kwargs.pop('restrict_config', ['encryption-keyfile'])
+        full_args = list(self.cmd) + list(args) + self._flatten_config(restrict_config)
         kwargs = {**self.kwargs, **kwargs}
 
         env = kwargs.get('env', dict(environ))
@@ -48,8 +51,12 @@ class PogCli():
     def run_command(self, *args, **kwargs):
         return list(self.run(*args, **kwargs))
 
-    def _flatten_config(self):
-        return ['--{}={}'.format(k, v) for k, v in self.config.items()]
+    def _flatten_config(self, restrict_config=None):
+        restrict_config = restrict_config or []
+        config = self.config.copy()
+        for key in restrict_config:
+            config.pop(key, None)
+        return ['--{}={}'.format(k, v) for k, v in config.items()]
 
     def dumpManifest(self, mfn):
         info = defaultdict(list)
@@ -64,7 +71,10 @@ class PogCli():
         return dict(info)
 
     def dumpManifestIndex(self, mfn):
-        yield from self.run('--dump-manifest-index', mfn)
+        kwargs = {}
+        if 'decryption-keyfile' not in self.config and 'encryption-keyfile' in self.config:
+            kwargs['restrict_config'] = []
+        yield from self.run('--dump-manifest-index', mfn, **kwargs)
 
     def decrypt(self, mfn, **kwargs):
         for line in self.run('--decrypt', mfn, **kwargs):
@@ -75,6 +85,7 @@ class PogCli():
             yield {'current': int(current), 'total': int(total), 'filename': filename.strip()}
 
     def encrypt(self, inputs, destinations, **kwargs):
+        kwargs['restrict_config'] = ['decryption-keyfile']
         save_to = '--save-to=' + ','.join(destinations)
         for line in self.run(save_to, *inputs, **kwargs):
             yield line

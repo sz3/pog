@@ -16,7 +16,7 @@ class PogCliTest(TestDirMixin, TestCase):
         for i in range(3):
             cli.set_keyfiles('foo.encrypt', 'foo.decrypt', 'other.keyfile')
             self.assertEqual(cli.config.get('decryption-keyfile'), 'foo.decrypt')
-            self.assertEqual(cli.config.get('encryption-keyfile'), None)
+            self.assertEqual(cli.config.get('encryption-keyfile'), 'foo.encrypt')
             self.assertEqual(cli.config.get('keyfile'), None)
 
         cli.set_keyfiles('foo.encrypt', 'other.keyfile')
