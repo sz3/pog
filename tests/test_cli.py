@@ -101,3 +101,29 @@ class PogCliTest(TestDirMixin, TestCase):
             ['python', '-u', '-m', 'pog.pog', '--decrypt', 'my.mfn', '--decryption-keyfile=foo.decrypt'],
             env=env, stdout=PIPE,
         )
+
+    @patch('pog.cli.Popen', autospec=True)
+    def test_encrypt(self, mock_run):
+        mock_run.return_value = mock_run
+        mock_run.__enter__.return_value = mock_run
+        mock_run.stdout = [
+            b'*** 1/2: foo.txt\n',
+            b'12345abcdefh\n',
+            b'*** 2/2: bar.txt\n',
+            b'abcdefg12345\n',
+        ]
+
+        cli = PogCli()
+        cli.set_keyfiles('foo.decrypt', 'foo.encrypt')
+        res = list(cli.encrypt(['foo.txt', 'bar.txt'], ['b2://bucket', 's3:bucket']))
+        self.assertEqual(res, [
+            {'current': 1, 'filename': 'foo.txt', 'total': 2},
+            {'current': 2, 'filename': 'bar.txt', 'total': 2}
+        ])
+
+        env = dict(environ)
+        env['PYTHONPATH'] = POG_ROOT
+        mock_run.assert_called_once_with(
+            ['python', '-u', '-m', 'pog.pog', '--save-to=b2://bucket,s3:bucket', 'foo.txt', 'bar.txt',
+             '--encryption-keyfile=foo.encrypt'], env=env, stdout=PIPE,
+        )

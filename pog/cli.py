@@ -76,16 +76,23 @@ class PogCli():
             kwargs['restrict_config'] = []
         yield from self.run('--dump-manifest-index', mfn, **kwargs)
 
+    def _progress_from_line(self, line):
+        if not line.startswith('*** '):
+            return None
+        progress, filename = line[4:].split(':', 1)
+        current, total = progress.split('/')
+        return {'current': int(current), 'total': int(total), 'filename': filename.strip()}
+
     def decrypt(self, mfn, **kwargs):
         for line in self.run('--decrypt', mfn, **kwargs):
-            if not line.startswith('*** '):
-                continue
-            progress, filename = line[4:].split(':', 1)
-            current, total = progress.split('/')
-            yield {'current': int(current), 'total': int(total), 'filename': filename.strip()}
+            progress = self._progress_from_line(line)
+            if progress:
+                yield progress
 
     def encrypt(self, inputs, destinations, **kwargs):
         kwargs['restrict_config'] = ['decryption-keyfile']
         save_to = '--save-to=' + ','.join(destinations)
         for line in self.run(save_to, *inputs, **kwargs):
-            yield line
+            progress = self._progress_from_line(line)
+            if progress:
+                yield progress
