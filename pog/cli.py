@@ -55,9 +55,9 @@ class PogCli():
         info = defaultdict(list)
         current_file = ''
         for line in self.run_command('--dump-manifest', mfn):
-            if line.startswith('***'):
+            if line.startswith('*** '):
                 continue
-            if line.startswith('*'):
+            if line.startswith('* '):
                 current_file = line[2:-1]
             else:
                 info[current_file].append(line)
@@ -68,9 +68,9 @@ class PogCli():
 
     def decrypt(self, mfn, **kwargs):
         for line in self.run('--decrypt', mfn, **kwargs):
-            if not line.startswith('* '):
+            if not line.startswith('*** '):
                 continue
-            progress, filename = line[2:].split(':', 1)
+            progress, filename = line[4:].split(':', 1)
             current, total = progress.split('/')
             yield {'current': int(current), 'total': int(total), 'filename': filename.strip()}
 

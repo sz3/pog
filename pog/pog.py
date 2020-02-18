@@ -130,8 +130,8 @@ def blobname(content, secret):
     return urlsafe_b64encode(sha256(secret + content_hash).digest())
 
 
-def print_progress(count, total, filename):
-    print('* {}/{}: {}'.format(count, total, filename))
+def _print_progress(count, total, filename):
+    print('*** {}/{}: {}'.format(count, total, filename))
 
 
 def get_secret(keyfile=None):
@@ -265,8 +265,9 @@ class Encryptor():
 
     def encrypt(self, *inputs):
         mfn = dict()
-        for filename in local_file_list(*inputs):
-            print('*** {}:'.format(filename), file=sys.stderr)
+        all_inputs = local_file_list(*inputs)
+        for count, filename in enumerate(all_inputs):
+            _print_progress(count+1, len(all_inputs), filename)
             outputs = []
             for temp_path in self.encrypt_single_file(filename):
                 blob_name = path.basename(temp_path)
@@ -368,7 +369,7 @@ class Decryptor():
                             self.decrypt_single_blob(blob, out=decompress_out)
                     utime(copy_filename, times=(info['atime'], info['mtime']))
                     # print progress to stdout
-                    print_progress(count+1, len(mfn), og_filename)
+                    _print_progress(count+1, len(mfn), og_filename)
                 if self.consume:
                     remove(filename)
             else:

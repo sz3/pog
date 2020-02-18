@@ -83,8 +83,8 @@ class PogCliTest(TestDirMixin, TestCase):
         mock_run.return_value = mock_run
         mock_run.__enter__.return_value = mock_run
         mock_run.stdout = [
-            b'* 1/2: foo.txt\n',
-            b'* 2/2: bar.txt\n',
+            b'*** 1/2: foo.txt\n',
+            b'*** 2/2: bar.txt\n',
         ]
 
         cli = PogCli()

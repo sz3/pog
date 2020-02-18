@@ -53,26 +53,32 @@ class KeyfileTest(TestDirMixin, TestCase):
         # encrypt our sample files
         enc = self.run_command(self.encryption_flag, self.tiny_sample, self.another_sample)
         # ordered lexicographically by filename
-        self.assertEqual(enc, [self.another_sample_blobname, self.tiny_sample_blobname])
+        self.assertEqual(enc, [
+            f'*** 1/2: {self.another_sample}',
+            self.another_sample_blobname,
+            f'*** 2/2: {self.tiny_sample}',
+            self.tiny_sample_blobname
+        ])
+        blobs = [l for l in enc if not l.startswith('***')]
 
         # check that the manifest looks good
         manifest_name = glob(path.join(self.working_dir.name, '*.mfn'))[0]
         show_mfn = self.run_command(self.decryption_flag, '--dump-manifest', manifest_name)
         self.assertEqual(
-            show_mfn, ['* another_sample.txt:', enc[0], '* tiny_sample.txt:', enc[1]]
+            show_mfn, ['* another_sample.txt:', blobs[0], '* tiny_sample.txt:', blobs[1]]
         )
 
         # check the index as well
         show_mfn_index = self.run_command(self.encryption_flag, '--dump-manifest-index', manifest_name)
-        self.assertEqual(sorted(show_mfn_index), sorted(enc))
+        self.assertEqual(sorted(show_mfn_index), sorted(blobs))
 
         # check that we have what we want for decryption
         paths = listdir(self.working_dir.name)
-        self.assertCountEqual(paths, [path.basename(manifest_name)] + enc)
+        self.assertCountEqual(paths, [path.basename(manifest_name)] + blobs)
 
         # decrypt, consuming our encrypted inputs
         dec = self.run_command(self.decryption_flag, '--decrypt', '--consume', manifest_name)
-        self.assertEqual(dec, ['* 1/2: another_sample.txt', '* 2/2: tiny_sample.txt'])
+        self.assertEqual(dec, ['*** 1/2: another_sample.txt', '*** 2/2: tiny_sample.txt'])
 
         # validate the directory looks like we expect it to
         paths = listdir(self.working_dir.name)
@@ -113,7 +119,7 @@ class KeyfileTest(TestDirMixin, TestCase):
             copyfile(f'{POG_ROOT}/tests/samples/{filename}', f'{self.working_dir.name}/{filename}')
 
         dec = self.run_command(self.decryption_flag, '--decrypt', '--consume', self.consistency_mfn)
-        self.assertEqual(dec, ['* 1/1: 8.txt'])
+        self.assertEqual(dec, ['*** 1/1: 8.txt'])
 
         # read the decrypted file
         with open(path.join(self.working_dir.name, '8.txt'), 'rb') as f:
@@ -149,7 +155,7 @@ class KeyfileTest(TestDirMixin, TestCase):
 
         # --decrypt
         dec = self.run_command(self.decryption_flag, '--decrypt', f'local:///{self.consistency_mfn}')
-        self.assertEqual(dec, ['* 1/1: 8.txt'])
+        self.assertEqual(dec, ['*** 1/1: 8.txt'])
 
         # read the decrypted file
         with open(path.join(self.working_dir.name, '8.txt'), 'rb') as f:
@@ -161,23 +167,28 @@ class KeyfileTest(TestDirMixin, TestCase):
         enc = self.run_command(
             self.encryption_flag, self.tiny_sample, self.another_sample, '--store-absolute-paths'
         )
-        self.assertEqual(enc, [self.another_sample_blobname, self.tiny_sample_blobname])
+        self.assertEqual(enc, [
+            f'*** 1/2: {self.another_sample}',
+            self.another_sample_blobname,
+            f'*** 2/2: {self.tiny_sample}',
+            self.tiny_sample_blobname
+        ])
 
         # check that the manifest looks good
         manifest_name = glob(path.join(self.working_dir.name, '*.mfn'))[0]
         show_mfn = self.run_command(self.decryption_flag, '--dump-manifest', manifest_name)
         self.assertEqual(
             show_mfn, [
-                '* {}:'.format(self.another_sample), enc[0],
-                '* {}:'.format(self.tiny_sample), enc[1],
+                '* {}:'.format(self.another_sample), enc[1],
+                '* {}:'.format(self.tiny_sample), enc[3],
             ]
         )
 
         # decrypt, consuming our encrypted inputs
         dec = self.run_command(self.decryption_flag, '--decrypt', '--consume', manifest_name)
         self.assertEqual(dec, [
-            '* 1/2: {}'.format(self.another_sample),
-            '* 2/2: {}'.format(self.tiny_sample),
+            '*** 1/2: {}'.format(self.another_sample),
+            '*** 2/2: {}'.format(self.tiny_sample),
         ])
 
         # validate the directory looks like we expect it to
@@ -200,15 +211,20 @@ class KeyfileTest(TestDirMixin, TestCase):
         enc = self.run_command(
             self.encryption_flag, self.input_dir.name, '--store-absolute-paths'
         )
-        self.assertEqual(enc, [self.another_sample_blobname, self.tiny_sample_blobname])
+        self.assertEqual(enc, [
+            f'*** 1/2: {self.another_sample}',
+            self.another_sample_blobname,
+            f'*** 2/2: {self.tiny_sample}',
+            self.tiny_sample_blobname
+        ])
 
         # check that the manifest looks good
         manifest_name = glob(path.join(self.working_dir.name, '*.mfn'))[0]
         show_mfn = self.run_command(self.decryption_flag, '--dump-manifest', manifest_name)
         self.assertEqual(
             show_mfn, [
-                '* {}:'.format(self.another_sample), enc[0],
-                '* {}:'.format(self.tiny_sample), enc[1],
+                '* {}:'.format(self.another_sample), enc[1],
+                '* {}:'.format(self.tiny_sample), enc[3],
             ]
         )
 
@@ -229,13 +245,19 @@ class AsymmetricCryptoTest(KeyfileTest):
         '''
         # encrypt our sample files
         enc = self.run_command(self.encryption_flag, self.tiny_sample, self.another_sample)
-        self.assertEqual(enc, [self.another_sample_blobname, self.tiny_sample_blobname])
+        self.assertEqual(enc, [
+            f'*** 1/2: {self.another_sample}',
+            self.another_sample_blobname,
+            f'*** 2/2: {self.tiny_sample}',
+            self.tiny_sample_blobname
+        ])
+        blobs = [l for l in enc if not l.startswith('***')]
 
         # check that the manifest index looks good
         manifest_name = glob(path.join(self.working_dir.name, '*.mfn'))[0]
         show_mfn = self.run_command(self.decryption_flag, '--dump-manifest-index', manifest_name)
         # manifest index sorted by blobname
-        self.assertEqual(show_mfn, sorted(enc))
+        self.assertEqual(show_mfn, sorted(blobs))
 
 
 @skipUnless(environ.get('CI'), 'long test skipped unless CI=1')
