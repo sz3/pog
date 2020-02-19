@@ -1,5 +1,10 @@
+from os import path
 from setuptools import setup, find_packages
 
+
+here = path.abspath(path.dirname(__file__))
+with open(path.join(here, 'README.md'), encoding='utf-8') as f:
+    long_description = f.read()
 
 setup(
     name='pogcli',
@@ -32,10 +37,9 @@ setup(
         's3': ['boto3'],
     },
 
-    description='Pretty Ok Gncryption',
-    long_description=(
-        'File encryption and backup utility.'
-    ),
+    description='File encryption and backup utility',
+    long_description=long_description,
+    long_description_content_type='text/markdown',
 
     author="Stephen Zimmerman",
     author_email="sz@galacticicecube.com",

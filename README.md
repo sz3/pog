@@ -9,6 +9,7 @@
 * Uses `nacl.SecretBox` and `zstandard`!
 * Chunks up large files!
 * Can be used to generate encrypted archives locally, or as a backup tool that pushes to cloud storage providers. (`s3`, `b2`, ...tbd)
+* There is a GUI: [pogui](https://github.com/sz3/pogui).
 
 This tool is built around symmetric encryption -- specifically `crypto_secretbox`, which is `xsalsa20poly1305`. Doing asymmetric PGP-like things is not in the cards -- but there is an experimental use case using asymmetric crypto that will likely be supported.
 
@@ -55,7 +56,6 @@ python setup.py install
 	* the goal is to pseudo-randomize the names of the blobs, while still keeping them consistent for backups run with the same key.
 	* we want to "leak" the content hash only to the extent it's necessary to save work on successive backups (e.g. "I don't need to reupload blob X, it already exists")
 	* because we use the content hash for this purpose, we can achieve some amount of file de-duplication.
-
 
 ## Disclaimer
 
