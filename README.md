@@ -11,7 +11,7 @@
 * Can be used to generate encrypted archives locally, or as a backup tool that pushes to cloud storage providers. (`s3`, `b2`, ...tbd)
 * There is a GUI: [pogui](https://github.com/sz3/pogui).
 
-This tool is built around symmetric encryption -- specifically `crypto_secretbox`, which is `xsalsa20poly1305`. Doing asymmetric PGP-like things is not in the cards -- but there is an experimental use case using asymmetric crypto that will likely be supported.
+This tool is built around symmetric encryption -- specifically libsodium's `crypto_secretbox`, which is `XSalsa20+Poly1305`. Doing asymmetric PGP-like things is not in the cards -- but there is an experimental use case using asymmetric crypto that will likely be supported.
 
 * Still in beta!
 * Don't rely on this to keep your government leaks secret!
