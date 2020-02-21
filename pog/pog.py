@@ -247,6 +247,7 @@ class Encryptor():
                 full_manifest_bytes = dumps(mfn).encode('utf-8')
                 self._write(f, _compress(full_manifest_bytes, self.compresslevel))
             self.blob_store.save(filename, temp_path)
+        return filename
 
     def encrypt_single_file(self, filename):
         cctx = zstd.ZstdCompressor(level=self.compresslevel)
@@ -267,7 +268,7 @@ class Encryptor():
         mfn = dict()
         all_inputs = local_file_list(*inputs)
         for count, filename in enumerate(all_inputs):
-            _print_progress(count+1, len(all_inputs), filename)
+            _print_progress(count+1, len(all_inputs)+1, filename)
             outputs = []
             for temp_path in self.encrypt_single_file(filename):
                 blob_name = path.basename(temp_path)
@@ -280,7 +281,8 @@ class Encryptor():
                     'atime': path.getatime(filename),
                     'mtime': path.getmtime(filename),
                 }
-        self.save_manifest(mfn)
+        mfn_filename = self.save_manifest(mfn)
+        _print_progress(len(all_inputs)+1, len(all_inputs)+1, mfn_filename)
 
 
 class Decryptor():
@@ -378,7 +380,7 @@ class Decryptor():
 
 
 def main():
-    args = docopt(__doc__, version='Pog 0.1.2')
+    args = docopt(__doc__, version='Pog 0.1.3')
     chunk_size = parse_size(args.get('--chunk-size', '100MB'))
     compresslevel = int(args.get('--compresslevel', '3'))
     store_absolute_paths = args.get('--store-absolute-paths')

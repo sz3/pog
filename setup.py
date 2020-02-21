@@ -10,7 +10,7 @@ setup(
     name='pogcli',
     license='MIT',
     url='https://github.com/sz3/pog',
-    version='0.1.2',
+    version='0.1.3',
 
     entry_points={
         'console_scripts': [
