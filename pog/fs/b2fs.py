@@ -1,4 +1,5 @@
 import re
+import sys
 from os import environ
 from subprocess import check_output
 
@@ -41,18 +42,18 @@ class b2fs(Pogfs):
 
     def upload_file(self, local_path, remote_path):
         res = _run_command('upload_file', self.bucket_name, local_path, remote_path)
-        print(res)
+        print(res, file=sys.stderr)
 
     def download_file(self, local_path, remote_path):
         res = _run_command('download-file-by-name', self.bucket_name, remote_path, local_path)
-        print(res)
+        print(res, file=sys.stderr)
 
     def remove_file(self, remote_path):
         file_id = self.exists(remote_path)
         if not file_id:
             return True
         res = _run_command('delete-file-version', remote_path, file_id)
-        print(res)
+        print(res, file=sys.stderr)
 
     def list_files(self, remote_path='', pattern=None, recursive=False):
         # maybe handle wildcards too... e.g. "*.mfn"
