@@ -10,6 +10,10 @@ class PogCli():
         self.cmd = pog_cmd or ['python', '-u', '-m', 'pog.pog']
         self.config = config or {}
         self.kwargs = kwargs or {}
+        self._abort = False
+
+    def abort(self):
+        self._abort = True
 
     def set_keyfiles(self, *keyfiles):
         for k in ('keyfile', 'decryption-keyfile', 'encryption-keyfile'):
@@ -32,6 +36,7 @@ class PogCli():
             return
 
     def run(self, *args, **kwargs):
+        self._abort = False
         restrict_config = kwargs.pop('restrict_config', ['encryption-keyfile'])
         full_args = list(self.cmd) + list(args) + self._flatten_config(restrict_config)
         kwargs = {**self.kwargs, **kwargs}
@@ -47,6 +52,9 @@ class PogCli():
             if kwargs['stdout'] == PIPE:
                 for line in proc.stdout:
                     yield line.decode('utf-8').strip()
+                    if self._abort:
+                        proc.terminate()
+                        break
 
     def run_command(self, *args, **kwargs):
         return list(self.run(*args, **kwargs))
