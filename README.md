@@ -33,10 +33,10 @@ python setup.py install
 
 ### Credentials
 * Pog does not manage cloud storage credentials -- it asks that you configure your environment with API keys before use.
-	a. To validate s3 credentials:
-		* awscli ls <bucket_name>
-	b. To validate b2 credentials:
-		* b2 ls <bucket_name>
+	* To validate s3 credentials:
+		* `awscli ls <bucket_name>`
+	* To validate b2 credentials:
+		* `b2 ls <bucket_name>`
 
 ### Using a password or keyfiles
 1. symmetric keyfile
@@ -53,7 +53,10 @@ python setup.py install
 ### Creating cloud archives and backups
 
 * Consider an S3 backup:
-`pog /home/user/my_file.txt --keyfile=/home/user/secret.keyfile --save-to=s3://my-bucket --store-absolute-paths`
+
+```
+pog /home/user/my_file.txt --keyfile=/home/user/secret.keyfile --save-to=s3://my-bucket --store-absolute-paths
+```
 
 This does a few things:
 1. `my_file.txt` is encrypted with `secret.keyfile`. If the file is sufficiently large, it is split into multiple pieces during encryption.
@@ -65,24 +68,36 @@ This does a few things:
 ----
 
 * Here is another example, with a series of directories:
-`pog /opt/games /opt/apps /opt/music --encryption-keyfile=secret.encrypt --save-to=s3://my-bucket,b2://my-b2-bucket`
+
+```
+pog /opt/games /opt/apps /opt/music --encryption-keyfile=secret.encrypt --save-to=s3://my-bucket,b2://my-b2-bucket
+```
 
 * This will recursively go through those 3 directories, gathering up all files and saving the encrypted blobs to both s3 and b2.
 
-The command line help shows other useful examples.
+The command line help (`pog -h`) shows other useful examples.
 
 ### Creating local archives
 
 * It is also possible to use Pog to encrypt a single file.
-`pog /home/myfile.original > outputs.txt`
+
+```
+pog /home/myfile.original > outputs.txt
+```
 
 * and to decrypt:
-`pog --decrypt $(cat outputs.txt) > myfile.copy`
+
+```
+pog --decrypt $(cat outputs.txt) > myfile.copy
+```
 
 ### Reading archives and backups
 
 For a given manifest file (`2020-01-23T12:34:56.012345.mfn`), we can download and extract the archive like so:
-`pog --decrypt s3:/my-bucket/2020-01-23T12:34:56.012345.mfn --keyfile=/home/user/secret.keyfile`
+
+```
+pog --decrypt s3:/my-bucket/2020-01-23T12:34:56.012345.mfn --keyfile=/home/user/secret.keyfile
+```
 
 * The `--decrypt` flag should be specified for read+decrypt -- the default behavior is to write+encrypt.
 * If a `--decryption-keyfile` is provided, `--decrypt` is assumed.
