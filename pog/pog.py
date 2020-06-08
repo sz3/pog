@@ -6,7 +6,7 @@
 Usage:
   pog <INPUTS>...
   pog [--keyfile=<filename> | --encryption-keyfile=<filename>] [--save-to=<b2|s3|filename|...>] [--chunk-size=<bytes>]
-      [--compresslevel=<1-22>] [--store-absolute-paths] <INPUTS>...
+      [--compresslevel=<1-22>] [--concurrency=<1-N>] [--store-absolute-paths] <INPUTS>...
   pog [--keyfile=<filename> | --decryption-keyfile=<filename>] [--decrypt | --dump-manifest] [--consume] <INPUTS>...
   pog [--keyfile=<filename> | --decryption-keyfile=<filename> | --encryption-keyfile=<filename>] [--dump-manifest-index]
       <INPUTS>...
@@ -31,6 +31,7 @@ Options:
   --version                        Show version.
   --chunk-size=<bytes>             When encrypting, split large files into <chunkMB> size parts [default: 100MB].
   --compresslevel=<1-22>           Zstd compression level during encryption. [default: 3]
+  --concurrency=<1-N>              How many threads to use for uploads. [default: 8]
   --consume                        Used with decrypt -- after decrypting a blob, delete it from disk to conserve space.
   --decrypt                        Decrypt instead.
   --decryption-keyfile=<filename>  Use asymmetric decryption -- <filename> contains the (binary) private key.
@@ -42,6 +43,8 @@ Options:
 """
 import sys
 from base64 import urlsafe_b64encode
+from collections import ChainMap
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from getpass import getpass
 from hashlib import sha256
@@ -156,13 +159,14 @@ def get_secret(keyfile=None):
 
 
 class Encryptor():
-    def __init__(self, secret, crypto_box=None, chunk_size=100000000, compresslevel=3, store_absolute_paths=False,
-                 blob_store=None):
+    def __init__(self, secret, crypto_box=None, chunk_size=100000000, compresslevel=3, concurrency=8,
+                 store_absolute_paths=False, blob_store=None):
         self.secret = sha256(secret).digest()
         self.index_box = nacl_SecretBox(secret)
         self.box = crypto_box or self.index_box
         self.chunk_size = chunk_size
         self.compresslevel = compresslevel
+        self.concurrency = concurrency
         self.store_absolute_paths = store_absolute_paths
         self.blob_store = blob_store or BlobStore()
 
@@ -249,7 +253,7 @@ class Encryptor():
             self.blob_store.save(filename, temp_path)
         return filename
 
-    def encrypt_single_file(self, filename):
+    def generate_encrypted_blobs(self, filename):
         cctx = zstd.ZstdCompressor(level=self.compresslevel)
         td = TemporaryDirectory(dir=_get_temp_dir())
         with open(filename, 'rb') as f, cctx.stream_reader(f) as compressed_stream, td as tempdir:
@@ -264,23 +268,33 @@ class Encryptor():
                     self._write(f, data)
                 yield temp_path
 
-    def encrypt(self, *inputs):
-        mfn = dict()
-        all_inputs = local_file_list(*inputs)
-        for count, filename in enumerate(all_inputs):
-            _print_progress(count+1, len(all_inputs)+1, filename)
-            outputs = []
-            for temp_path in self.encrypt_single_file(filename):
-                blob_name = path.basename(temp_path)
-                self.blob_store.save_blob(blob_name, temp_path)
-                outputs.append(blob_name)
-                print(blob_name)
-            if outputs:
-                mfn[self.archived_filename(filename)] = {
+    def encrypt_and_store_file(self, args):
+        filename, current_count, total_count = args
+        _print_progress(current_count+1, total_count+1, filename)
+        outputs = []
+        for temp_path in self.generate_encrypted_blobs(filename):
+            blob_name = path.basename(temp_path)
+            self.blob_store.save_blob(blob_name, temp_path)
+            outputs.append(blob_name)
+            print(blob_name)
+        return {
+            self.archived_filename(filename):
+                {
                     'blobs': outputs,
                     'atime': path.getatime(filename),
                     'mtime': path.getmtime(filename),
                 }
+        }
+
+    def encrypt(self, *inputs):
+        mfn = dict()
+        all_inputs = local_file_list(*inputs)
+
+        exe = ThreadPoolExecutor(max_workers=self.concurrency)
+        args = [(filename, count, len(all_inputs)) for count, filename in enumerate(all_inputs)]
+        mfn = exe.map(self.encrypt_and_store_file, args)
+        mfn = dict(ChainMap(*mfn))  # smash the maps together
+
         mfn_filename = self.save_manifest(mfn)
         _print_progress(len(all_inputs)+1, len(all_inputs)+1, mfn_filename)
 
@@ -381,8 +395,9 @@ class Decryptor():
 
 def main():
     args = docopt(__doc__, version='Pog 0.1.3')
-    chunk_size = parse_size(args.get('--chunk-size', '100MB'))
-    compresslevel = int(args.get('--compresslevel', '3'))
+    chunk_size = parse_size(args.get('--chunk-size'))
+    compresslevel = int(args.get('--compresslevel'))
+    concurrency = int(args.get('--concurrency'))
     store_absolute_paths = args.get('--store-absolute-paths')
 
     secret, crypto_box = get_asymmetric_encryption(args.get('--decryption-keyfile'), args.get('--encryption-keyfile'))
@@ -406,7 +421,7 @@ def main():
             d.decrypt(*args['<INPUTS>'])
     else:
         bs = BlobStore(args.get('--save-to'))
-        en = Encryptor(secret, crypto_box, chunk_size, compresslevel, store_absolute_paths, bs)
+        en = Encryptor(secret, crypto_box, chunk_size, compresslevel, concurrency, store_absolute_paths, bs)
         en.encrypt(*args['<INPUTS>'])
 
 
