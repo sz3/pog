@@ -294,6 +294,7 @@ class Encryptor():
         args = [(filename, count, len(all_inputs)) for count, filename in enumerate(all_inputs)]
         mfn = exe.map(self.encrypt_and_store_file, args)
         mfn = dict(ChainMap(*mfn))  # smash the maps together
+        mfn = dict(sorted(mfn.items()))
 
         mfn_filename = self.save_manifest(mfn)
         _print_progress(len(all_inputs)+1, len(all_inputs)+1, mfn_filename)
