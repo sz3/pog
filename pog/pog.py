@@ -395,7 +395,7 @@ class Decryptor():
 
 
 def main():
-    args = docopt(__doc__, version='Pog 0.1.3')
+    args = docopt(__doc__, version='Pog 0.1.4')
     chunk_size = parse_size(args.get('--chunk-size'))
     compresslevel = int(args.get('--compresslevel'))
     concurrency = int(args.get('--concurrency'))
