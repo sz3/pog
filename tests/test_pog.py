@@ -15,6 +15,8 @@ SAMPLE_TEXT = b'''069:15:22 Lovell (onboard): Hey, I don't see a thing. Where ar
 069:15:24 Anders (onboard): It looks like a big - looks like a big beach down there.
 '''
 
+CONCURRENCY_FLAG = '--concurrency=1'
+
 
 def compute_checksum(filename):
     hash_md5 = hashlib.md5()
@@ -51,7 +53,7 @@ class KeyfileTest(TestDirMixin, TestCase):
 
     def test_round_trip(self):
         # encrypt our sample files
-        enc = self.run_command(self.encryption_flag, self.tiny_sample, self.another_sample)
+        enc = self.run_command(self.encryption_flag, self.tiny_sample, self.another_sample, CONCURRENCY_FLAG)
         manifest_name = glob(path.join(self.working_dir.name, '*.mfn'))[0]
 
         # ordered lexicographically by filename
@@ -167,7 +169,7 @@ class KeyfileTest(TestDirMixin, TestCase):
     def test_absolute_paths(self):
         # encrypt our sample files, saving their absolute paths in the manifest
         enc = self.run_command(
-            self.encryption_flag, self.tiny_sample, self.another_sample, '--store-absolute-paths'
+            self.encryption_flag, self.tiny_sample, self.another_sample, '--store-absolute-paths', CONCURRENCY_FLAG
         )
         manifest_name = glob(path.join(self.working_dir.name, '*.mfn'))[0]
 
@@ -213,7 +215,7 @@ class KeyfileTest(TestDirMixin, TestCase):
     def test_glob_input_directory(self):
         # encrypt our sample files, saving their absolute paths in the manifest
         enc = self.run_command(
-            self.encryption_flag, self.input_dir.name, '--store-absolute-paths'
+            self.encryption_flag, self.input_dir.name, '--store-absolute-paths', CONCURRENCY_FLAG
         )
         manifest_name = glob(path.join(self.working_dir.name, '*.mfn'))[0]
 
@@ -250,7 +252,7 @@ class AsymmetricCryptoTest(KeyfileTest):
         We sort the blobs stored in the manifest index, to limit information about which blobs belong together.
         '''
         # encrypt our sample files
-        enc = self.run_command(self.encryption_flag, self.tiny_sample, self.another_sample)
+        enc = self.run_command(self.encryption_flag, self.tiny_sample, self.another_sample, CONCURRENCY_FLAG)
         manifest_name = glob(path.join(self.working_dir.name, '*.mfn'))[0]
 
         self.assertEqual(enc, [

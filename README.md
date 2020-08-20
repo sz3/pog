@@ -31,7 +31,77 @@ python setup.py install
 
 ## Usage
 
-(WIP)
+### Credentials
+* Pog does not manage cloud storage credentials -- it asks that you configure your environment with API keys before use.
+	* To validate s3 credentials:
+		* `awscli ls <bucket_name>`
+	* To validate b2 credentials:
+		* `b2 ls <bucket_name>`
+
+### Using a password or keyfiles
+1. symmetric keyfile
+	* any file can be used as a keyfile.
+	* the contents of the keyfile will be hashed, and that hash will become the cryptographic key
+	* cryptographic randomness (ex: 1024 bytes from /dev/urandom) is recommended
+2. asymmetric keyfiles
+	* the `pog-create-keypair` script will generate an "encrypt" and "decrypt" keypair.
+	* encrypt is used for creating archives
+	* decrypt is used for extracting them
+3. Password entry
+	* if no keyfiles are specified, Pog supports password entry for creating or reading archives
+
+### Creating cloud archives and backups
+
+* Consider an S3 backup:
+
+```
+pog /home/user/my_file.txt --keyfile=/home/user/secret.keyfile --save-to=s3://my-bucket --store-absolute-paths
+```
+
+This does a few things:
+1. `my_file.txt` is encrypted with `secret.keyfile`. If the file is sufficiently large, it is split into multiple pieces during encryption.
+2. The encrypted contents ("blob") of `my_file.txt` is saved to the s3 bucket `my-bucket`, under the top-level `data/` subdirectory.
+3. An encrypted "manifest" file is created, named according to the time the archive was created. This manifest file acts as an index from filenames (`/home/user/my_file`) to one or more encrypted blobs.
+   a. The `--store-absolute-paths` flag tells the manifest to resolve ambiguous paths with the absolute path (`/home/user/my_file`) instead of the relative path (`my_file`). This can be useful to have when extracting archives or backups.
+4. The manifest file is also saved to `my-bucket` in s3.
+
+----
+
+* Here is another example, with a series of directories:
+
+```
+pog /opt/games /opt/apps /opt/music --encryption-keyfile=secret.encrypt --save-to=s3://my-bucket,b2://my-b2-bucket
+```
+
+* This will recursively go through those 3 directories, gathering up all files and saving the encrypted blobs to both s3 and b2.
+
+The command line help (`pog -h`) shows other useful examples.
+
+### Creating local archives
+
+* It is also possible to use Pog to encrypt a single file.
+
+```
+pog /home/myfile.original > outputs.txt
+```
+
+* and to decrypt:
+
+```
+pog --decrypt $(cat outputs.txt) > myfile.copy
+```
+
+### Reading archives and backups
+
+For a given manifest file (`2020-01-23T12:34:56.012345.mfn`), we can download and extract the archive like so:
+
+```
+pog --decrypt s3:/my-bucket/2020-01-23T12:34:56.012345.mfn --keyfile=/home/user/secret.keyfile
+```
+
+* The `--decrypt` flag should be specified for read+decrypt -- the default behavior is to write+encrypt.
+* If a `--decryption-keyfile` is provided, `--decrypt` is assumed.
+* If a local manifest file is provided, it is assumed that the data blobs are already downloaded into the working directory.
 
 ## Algorithm
 
@@ -46,7 +116,7 @@ python setup.py install
 		* this is what the `--keyfile` option does
 	* `crypto_sealedbox` with an X25519 key pair
 		* this is what `--decryption-keyfile` and `--encryption-keyfile` do
-		* an X25519 key pair can be generated with pog-create-keypair.
+		* an X25519 key pair can be generated with `pog-create-keypair`.
 
 * the file->blob relationship is stored in an encrypted manifest file (`.mfn`), which also stores file metadata -- e.g. last modified time.
 	* the `.mfn` can be thought of as the dictionary for the archive.
