@@ -1,4 +1,7 @@
-.PHONY: clean test flake
+.PHONY: default pypi clean test flake
+
+default:
+	flake test
 
 pypi:
 	python setup.py sdist

@@ -184,8 +184,7 @@ class Encryptor():
         if ll < self.chunk_size:
             pad_length = ll % 256
             # 8 bytes for frame header, then pad
-            # (pad_length).to_bytes(4, byteorder='little')
-            padding = b'\x50\x2A\x4D\x18' + bytes([pad_length, 0, 0, 0]) + nacl_random(pad_length)
+            padding = b'\x50\x2A\x4D\x18' + (pad_length).to_bytes(4, byteorder='little') + b'\x00'*pad_length
             return data + padding
         return data
 
