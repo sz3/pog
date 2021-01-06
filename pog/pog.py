@@ -6,7 +6,7 @@
 Usage:
   pog <INPUTS>...
   pog [--keyfile=<filename> | --encryption-keyfile=<filename>] [--save-to=<b2|s3|filename|...>] [--chunk-size=<bytes>]
-      [--compresslevel=<1-22>] [--concurrency=<1-N>] [--store-absolute-paths] [--backup-id=<backupid>] <INPUTS>...
+      [--compresslevel=<1-22>] [--concurrency=<1-N>] [--store-absolute-paths] [--backup-name=<backup>] <INPUTS>...
   pog [--keyfile=<filename> | --decryption-keyfile=<filename>] [--decrypt | --dump-manifest] [--consume] <INPUTS>...
   pog [--keyfile=<filename> | --decryption-keyfile=<filename> | --encryption-keyfile=<filename>] [--dump-manifest-index]
       <INPUTS>...
@@ -29,7 +29,7 @@ Examples:
 Options:
   -h --help                        Show this help.
   --version                        Show version.
-  -b --backup-id=<backupid>        The prefix/label for the backup manifest file. Stored in cleartext!
+  -b --backup-name=<backup>        The prefix/label for the backup manifest file. Stored in cleartext!
   --chunk-size=<bytes>             When encrypting, split large files into <chunkMB> size parts [default: 100MB].
   --compresslevel=<1-22>           Zstd compression level during encryption. [default: 3]
   --concurrency=<1-N>              How many threads to use for uploads. [default: 8]
@@ -421,8 +421,8 @@ def main():
         else:
             d.decrypt(*args['<INPUTS>'])
     else:
-        backup_id = args.get('--backup-id')
-        mfn_filename = None if not backup_id else '{}-{}.mfn'.format(backup_id, datetime.now().isoformat())
+        backup_name = args.get('--backup-name')
+        mfn_filename = None if not backup_name else '{}-{}.mfn'.format(backup_name, datetime.now().isoformat())
         bs = BlobStore(args.get('--save-to'))
         en = Encryptor(secret, crypto_box, chunk_size, compresslevel, concurrency, store_absolute_paths, bs)
         en.encrypt(*args['<INPUTS>'], mfn_filename=mfn_filename)

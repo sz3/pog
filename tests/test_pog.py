@@ -105,8 +105,8 @@ class KeyfileTest(TestDirMixin, TestCase):
 
     def test_named_manifest(self):
         # encrypt our sample files
-        backup_id_f = '--backup-id=back1'
-        enc = self.run_command(self.encryption_flag, self.tiny_sample, self.another_sample, CONCURRENCY_FLAG, backup_id_f)
+        backup_name = '--backup-name=back1'
+        enc = self.run_command(self.encryption_flag, self.tiny_sample, self.another_sample, CONCURRENCY_FLAG, backup_name)
         manifest_name = glob(path.join(self.working_dir.name, '*.mfn'))[0]
         self.assertIn('back1-', manifest_name)
 
