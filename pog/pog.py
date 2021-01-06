@@ -6,7 +6,7 @@
 Usage:
   pog <INPUTS>...
   pog [--keyfile=<filename> | --encryption-keyfile=<filename>] [--save-to=<b2|s3|filename|...>] [--chunk-size=<bytes>]
-      [--compresslevel=<1-22>] [--concurrency=<1-N>] [--store-absolute-paths] <INPUTS>...
+      [--compresslevel=<1-22>] [--concurrency=<1-N>] [--store-absolute-paths] [--backup-id=<backupid>] <INPUTS>...
   pog [--keyfile=<filename> | --decryption-keyfile=<filename>] [--decrypt | --dump-manifest] [--consume] <INPUTS>...
   pog [--keyfile=<filename> | --decryption-keyfile=<filename> | --encryption-keyfile=<filename>] [--dump-manifest-index]
       <INPUTS>...
@@ -29,11 +29,12 @@ Examples:
 Options:
   -h --help                        Show this help.
   --version                        Show version.
+  -b --backup-id=<backupid>        The prefix/label for the backup manifest file. Stored in cleartext!
   --chunk-size=<bytes>             When encrypting, split large files into <chunkMB> size parts [default: 100MB].
   --compresslevel=<1-22>           Zstd compression level during encryption. [default: 3]
   --concurrency=<1-N>              How many threads to use for uploads. [default: 8]
   --consume                        Used with decrypt -- after decrypting a blob, delete it from disk to conserve space.
-  --decrypt                        Decrypt instead.
+  -d --decrypt                     Decrypt instead.
   --decryption-keyfile=<filename>  Use asymmetric decryption -- <filename> contains the (binary) private key.
   --encryption-keyfile=<filename>  Use asymmetric encryption -- <filename> contains the (binary) public key.
   --keyfile=<filename>             Instead of prompting for a password, use file contents as the secret.
@@ -285,7 +286,7 @@ class Encryptor():
                 }
         }
 
-    def encrypt(self, *inputs):
+    def encrypt(self, *inputs, mfn_filename=None):
         mfn = dict()
         all_inputs = local_file_list(*inputs)
 
@@ -295,7 +296,7 @@ class Encryptor():
         mfn = dict(ChainMap(*mfn))  # smash the maps together
         mfn = dict(sorted(mfn.items()))
 
-        mfn_filename = self.save_manifest(mfn)
+        mfn_filename = self.save_manifest(mfn, mfn_filename)
         _print_progress(len(all_inputs)+1, len(all_inputs)+1, mfn_filename)
 
 
@@ -420,9 +421,11 @@ def main():
         else:
             d.decrypt(*args['<INPUTS>'])
     else:
+        backup_id = args.get('--backup-id')
+        mfn_filename = None if not backup_id else '{}-{}.mfn'.format(backup_id, datetime.now().isoformat())
         bs = BlobStore(args.get('--save-to'))
         en = Encryptor(secret, crypto_box, chunk_size, compresslevel, concurrency, store_absolute_paths, bs)
-        en.encrypt(*args['<INPUTS>'])
+        en.encrypt(*args['<INPUTS>'], mfn_filename=mfn_filename)
 
 
 if __name__ == '__main__':

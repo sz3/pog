@@ -103,6 +103,29 @@ class KeyfileTest(TestDirMixin, TestCase):
         self.assertEqual(path.getmtime(tiny_sample), SAMPLE_TIME1)
         self.assertEqual(path.getmtime(another_sample), SAMPLE_TIME2)
 
+    def test_named_manifest(self):
+        # encrypt our sample files
+        backup_id_f = '--backup-id=back1'
+        enc = self.run_command(self.encryption_flag, self.tiny_sample, self.another_sample, CONCURRENCY_FLAG, backup_id_f)
+        manifest_name = glob(path.join(self.working_dir.name, '*.mfn'))[0]
+        self.assertIn('back1-', manifest_name)
+
+        # ordered lexicographically by filename
+        self.assertEqual(enc, [
+            f'*** 1/3: {self.another_sample}',
+            self.another_sample_blobname,
+            f'*** 2/3: {self.tiny_sample}',
+            self.tiny_sample_blobname,
+            '*** 3/3: {}'.format(path.basename(manifest_name)),
+        ])
+        blobs = [l for l in enc if not l.startswith('***')]
+
+        # check that the manifest looks good
+        show_mfn = self.run_command(self.decryption_flag, '--dump-manifest', manifest_name)
+        self.assertEqual(
+            show_mfn, ['* another_sample.txt:', blobs[0], '* tiny_sample.txt:', blobs[1]]
+        )
+
     def test_consistency(self):
         # regression test for our header/encryption format -- try to decrypt a known file
         with open(path.join(self.working_dir.name, 'out.txt'), 'wb') as f:
