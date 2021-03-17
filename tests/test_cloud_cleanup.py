@@ -42,7 +42,7 @@ class CloudCleanupTest(TestDirMixin, TestCase):
     def test_cleanup_for_real(self):
         # make a file:/// repo for us to blow up
         for i in range(4):
-            self.fs.upload_file(f'{POG_ROOT}/tests/samples/{self.consistency_mfn}', f'aa-2021-01-1{i}Z.mfn')
+            self.fs.upload_file(f'{POG_ROOT}/tests/samples/{self.consistency_mfn}', f'aa-2021-01-1{i}T00:55.mfn')
 
         res = self.run_command(self.keyfile_flag, '--backup=local', '--reckless-abandon')
         self.assertIn('would remove aa-2021-01-11T00:55.mfn', res)
@@ -78,7 +78,7 @@ class CloudCleanupTest(TestDirMixin, TestCase):
             self.fs.upload_file(f'{POG_ROOT}/tests/samples/{self.consistency_mfn}', f'{i}.mfn')
 
         res = self.run_command(self.keyfile_flag, '--backup=local', '--exp-similarity-check', '--reckless-abandon')
-        self.assertIn('would remove 0.mfn', res)
+        self.assertIn('would remove 0.mfn (similarity)', res)
 
         self.assertEqual(self.fs.list_files(recursive=True), [
             f'{self.working_dir.name}/3.mfn',

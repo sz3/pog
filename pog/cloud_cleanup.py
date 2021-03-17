@@ -65,7 +65,6 @@ def obsolete_by_manifest_name(mfns, blobs):
     obsoleted_by = defaultdict(set)
     for label, ms in groups.items():
         max_mfn = sorted(ms)[-1]
-        print(f'max for {label} of {ms} is ... {max_mfn}')
         for mfn in ms:
             if mfn != max_mfn:
                 obsoleted_by[mfn].add(max_mfn)
@@ -85,6 +84,9 @@ def obsolete_by_similarity(mfns, blobs):
             else:
                 obsoleted_by[a].add(b)
         print('{a} vs {b} similarity: {similarity}'.format(a=a, b=b, similarity=similarity))
+
+    for f in obsoleted_by.keys():
+        print('would remove {} (similarity)'.format(f))
     return obsoleted_by
 
 
@@ -100,10 +102,9 @@ def _obsolete(config, fs, which='manifest_name'):
             local_path = path_join(tempdir, mfn)
             blobs[mfn] = get_blobs(local_path, config)
 
+        obsoleted_by = obsolete_by_manifest_name(mfns, blobs)
         if which == 'similarity':
-            obsoleted_by = obsolete_by_similarity(mfns, blobs)
-        else:
-            obsoleted_by = obsolete_by_manifest_name(mfns, blobs)
+            obsoleted_by.update(obsolete_by_similarity(mfns, blobs))
 
         print('***')
         print(obsoleted_by)
@@ -131,14 +132,9 @@ def _obsolete(config, fs, which='manifest_name'):
 
 
 def check_for_obsolete_data(config, fs, reckless_abandon=False, similarity_check=False):
-    if similarity_check:
-        obsolete = list(_obsolete(config, fs, 'similarity'))
-        for filename in obsolete:
-            print('would remove {} (similarity)'.format(filename))
-            if reckless_abandon:
-                fs.remove_file(filename)
-
-    for filename in list(_obsolete(config, fs)):
+    similarity_check = 'similarity' if similarity_check else 'manifest_name'
+    obsolete = list(_obsolete(config, fs, similarity_check))
+    for filename in obsolete:
         print('would remove {}'.format(filename))
         if reckless_abandon:
             fs.remove_file(filename)
