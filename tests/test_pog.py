@@ -103,9 +103,9 @@ class KeyfileTest(TestDirMixin, TestCase):
         self.assertEqual(path.getmtime(tiny_sample), SAMPLE_TIME1)
         self.assertEqual(path.getmtime(another_sample), SAMPLE_TIME2)
 
-    def test_named_manifest(self):
+    def test_label_manifest(self):
         # encrypt our sample files
-        backup_name = '--backup-name=back1'
+        backup_name = '--label=back1'
         enc = self.run_command(self.encryption_flag, self.tiny_sample, self.another_sample, CONCURRENCY_FLAG, backup_name)
         manifest_name = glob(path.join(self.working_dir.name, '*.mfn'))[0]
         self.assertIn('back1-', manifest_name)
