@@ -6,7 +6,7 @@ In beta. Use at your own peril.
 
 Usage:
   pog-cleanup [--keyfile=<filename> | --decryption-keyfile=<filename> | --encryption-keyfile=<filename>]
-              [--backup=<b2|s3|..>] [--reckless-abandon]
+              [--backup=<b2|s3|..>] [--reckless-abandon] [--exp-similarity-check]
   pog-cleanup (-h | --help)
 
 Examples:
@@ -20,9 +20,11 @@ Options:
   --keyfile=<filename>             Instead of prompting for a password, use file contents as the secret.
   --backup=<b2|s3|filename|...>    Cloud service (s3, b2) to scrutinize.
   --reckless-abandon               Delete files.
+  --exp-similarity-check           Attempt to clean up old backups if newer ones seem to supercede them. (experimental!)
 """
 
 from collections import defaultdict
+from dateutil import parser as dateutil_parse
 from itertools import combinations
 from os.path import basename, join as path_join
 from tempfile import TemporaryDirectory
@@ -39,7 +41,54 @@ def get_blobs(local_mfn, config):
     return set(cl.dumpManifestIndex(local_mfn))
 
 
-def doit(config, fs, reckless_abandon=False):
+def obsolete_by_manifest_name(mfns, blobs):
+    # group common prefixes together
+    groups = defaultdict(list)
+    for mfn in mfns:
+        if not mfn.endswith('.mfn'):
+            continue
+
+        # path will be "xyz-2020-10-26T02:00:06.995497.mfn"
+        # we want the date
+        splits = mfn[:-4].rsplit('-')
+        dt_str = '-'.join(splits[-3:])
+        try:
+            dateutil_parse.parse(dt_str)
+        except:  # not a date?
+            continue
+
+        label = splits[0]
+        if len(splits) == 3 or label == '':
+            continue
+        groups[label].append(mfn)
+
+    obsoleted_by = defaultdict(set)
+    for label, ms in groups.items():
+        max_mfn = sorted(ms)[-1]
+        print(f'max for {label} of {ms} is ... {max_mfn}')
+        for mfn in ms:
+            if mfn != max_mfn:
+                obsoleted_by[mfn].add(max_mfn)
+    return obsoleted_by
+
+
+def obsolete_by_similarity(mfns, blobs):
+    obsoleted_by = defaultdict(set)
+    for a, b in combinations(mfns, 2):
+        same = len(blobs[a] and blobs[b])
+        diff = len(blobs[a] ^ blobs[b])
+
+        similarity = same / (same + diff)
+        if similarity > .9:
+            if a > b:
+                obsoleted_by[b].add(a)
+            else:
+                obsoleted_by[a].add(b)
+        print('{a} vs {b} similarity: {similarity}'.format(a=a, b=b, similarity=similarity))
+    return obsoleted_by
+
+
+def _obsolete(config, fs, which='manifest_name'):
     with TemporaryDirectory() as tempdir:
         mfns = sorted([f for f in fs.list_files(recursive=False) if f.endswith('.mfn')])
         for mfn in mfns:
@@ -51,18 +100,10 @@ def doit(config, fs, reckless_abandon=False):
             local_path = path_join(tempdir, mfn)
             blobs[mfn] = get_blobs(local_path, config)
 
-        obsoleted_by = defaultdict(set)
-        for a, b in combinations(mfns, 2):
-            same = len(blobs[a] and blobs[b])
-            diff = len(blobs[a] ^ blobs[b])
-
-            similarity = same / (same + diff)
-            if similarity > .9:
-                if a > b:
-                    obsoleted_by[b].add(a)
-                else:
-                    obsoleted_by[a].add(b)
-            print('{a} vs {b} similarity: {similarity}'.format(a=a, b=b, similarity=similarity))
+        if which == 'similarity':
+            obsoleted_by = obsolete_by_similarity(mfns, blobs)
+        else:
+            obsoleted_by = obsolete_by_manifest_name(mfns, blobs)
 
         print('***')
         print(obsoleted_by)
@@ -74,9 +115,7 @@ def doit(config, fs, reckless_abandon=False):
 
         for mfn in mfns:
             if mfn not in final_mfns:
-                print('would remove {}'.format(mfn))
-                if reckless_abandon:
-                    fs.remove_file(mfn)
+                yield mfn
 
         blobs_to_keep = set()
         for m, b in blobs.items():
@@ -88,9 +127,21 @@ def doit(config, fs, reckless_abandon=False):
         for blob in fs.list_files('data/', recursive=True):
             if basename(blob) in blobs_to_keep:
                 continue
-            print('would remove {}'.format(blob))
+            yield blob
+
+
+def check_for_obsolete_data(config, fs, reckless_abandon=False, similarity_check=False):
+    if similarity_check:
+        obsolete = list(_obsolete(config, fs, 'similarity'))
+        for filename in obsolete:
+            print('would remove {} (similarity)'.format(filename))
             if reckless_abandon:
-                fs.remove_file(blob)
+                fs.remove_file(filename)
+
+    for filename in list(_obsolete(config, fs)):
+        print('would remove {}'.format(filename))
+        if reckless_abandon:
+            fs.remove_file(filename)
 
 
 def main():
@@ -106,8 +157,9 @@ def main():
     fs = get_cloud_fs(target)(bucket)
 
     reckless_abandon = args['--reckless-abandon']
+    similarity_check = args['--exp-similarity-check']
 
-    doit(config, fs, reckless_abandon)
+    check_for_obsolete_data(config, fs, reckless_abandon, similarity_check)
 
 
 if __name__ == '__main__':
