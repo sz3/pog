@@ -5,7 +5,7 @@
 
 Usage:
   pog <INPUTS>...
-  pog [--keyfile=<filename> | --encryption-keyfile=<filename>] [--save-to=<b2|s3|filename|...>] [--chunk-size=<bytes>]
+  pog [--keyfile=<filename> | --encryption-keyfile=<filename>] [--save-to=<b2|s3|script.sh|...>] [--chunk-size=<bytes>]
       [--compresslevel=<1-22>] [--concurrency=<1-N>] [--store-absolute-paths] [--label=<backup>] <INPUTS>...
   pog [--keyfile=<filename> | --decryption-keyfile=<filename>] [--decrypt | --dump-manifest] [--consume] <INPUTS>...
   pog [--keyfile=<filename> | --decryption-keyfile=<filename> | --encryption-keyfile=<filename>] [--dump-manifest-index]
@@ -33,13 +33,13 @@ Options:
   --chunk-size=<bytes>             When encrypting, split large files into <chunkMB> size parts [default: 100MB].
   --compresslevel=<1-22>           Zstd compression level during encryption. [default: 3]
   --concurrency=<1-N>              How many threads to use for uploads. [default: 8]
+  -d --decrypt                     Decrypt. Automatically assumed when --decryption-keyfile is used.
   --consume                        Used with decrypt -- after decrypting a blob, delete it from disk to conserve space.
-  -d --decrypt                     Decrypt instead.
   --decryption-keyfile=<filename>  Use asymmetric decryption -- <filename> contains the (binary) private key.
   --encryption-keyfile=<filename>  Use asymmetric encryption -- <filename> contains the (binary) public key.
   --keyfile=<filename>             Instead of prompting for a password, use file contents as the secret.
   --store-absolute-paths           Store files under their absolute paths (i.e. for backups)
-  --save-to=<b2|s3|filename|...>   During encryption, where to save encrypted data. Can be a cloud service (s3, b2), or the
+  --save-to=<b2|s3|/script.sh|...> During encryption, where to save encrypted data. Can be a cloud service (s3, b2), or the
                                    path to a script to run with (<encrypted file name>, <temp file path>).
 """
 import sys

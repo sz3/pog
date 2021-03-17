@@ -22,6 +22,24 @@ def _flatten(*args):
     return flatter
 
 
+def parse_storage_str(paths=None):
+    if not paths:
+        return None
+
+    dests = []
+    for line in paths.split(','):
+        line = line.strip()
+        if ':' not in line:  # scripts, etc
+            d = (line, None)
+        else:
+            target, bucket = line.split(':', 1)
+            if bucket.startswith('//'):
+                bucket = bucket[2:]
+            d = (target, bucket.rstrip('/'))
+        dests.append(d)
+    return dests
+
+
 class download_list():
     def __init__(self, *args, **kwargs):
         self.filenames = _flatten(*args)
@@ -96,24 +114,7 @@ class download_list():
 
 class BlobStore():
     def __init__(self, save_to=None):
-        self.save_to = self._parse_save_to(save_to)
-
-    def _parse_save_to(self, save_to=None):
-        if not save_to:
-            return None
-
-        dests = []
-        for line in save_to.split(','):
-            line = line.strip()
-            if ':' not in line:  # scripts, etc
-                d = (line, None)
-            else:
-                target, bucket = line.split(':', 1)
-                if bucket.startswith('//'):
-                    bucket = bucket[2:]
-                d = (target, bucket.rstrip('/'))
-            dests.append(d)
-        return dests
+        self.save_to = parse_storage_str(save_to)
 
     def save(self, name, temp_path):
         if not self.save_to:

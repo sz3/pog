@@ -3,7 +3,7 @@ from unittest import TestCase
 from unittest.mock import patch
 
 from .helpers import TestDirMixin
-from pog.lib.blob_store import BlobStore, download_list, _data_path
+from pog.lib.blob_store import BlobStore, download_list, _data_path, parse_storage_str
 
 
 class DownloadListTest(TestDirMixin, TestCase):
@@ -167,20 +167,19 @@ class BlobStoreTest(TestDirMixin, TestCase):
             pass
         super().tearDown()
 
-    def test_parse_save_to(self):
-        bs = BlobStore()
-        self.assertEqual(bs._parse_save_to('b2'), [('b2', None)])
-        self.assertEqual(bs._parse_save_to('b2:bucket2'), [('b2', 'bucket2')])
-        self.assertEqual(bs._parse_save_to('b2://bucket2'), [('b2', 'bucket2')])
-        self.assertEqual(bs._parse_save_to('b2://bucket2/'), [('b2', 'bucket2')])
-        self.assertEqual(bs._parse_save_to('local:/home/user/'), [('local', '/home/user')])
-        self.assertEqual(bs._parse_save_to('./local-save.sh'), [('./local-save.sh', None)])
-        self.assertEqual(bs._parse_save_to('b2,s3'), [('b2', None), ('s3', None)])
-        self.assertEqual(bs._parse_save_to(
+    def test_parse_storage_str(self):
+        self.assertEqual(parse_storage_str('b2'), [('b2', None)])
+        self.assertEqual(parse_storage_str('b2:bucket2'), [('b2', 'bucket2')])
+        self.assertEqual(parse_storage_str('b2://bucket2'), [('b2', 'bucket2')])
+        self.assertEqual(parse_storage_str('b2://bucket2/'), [('b2', 'bucket2')])
+        self.assertEqual(parse_storage_str('local:/home/user/'), [('local', '/home/user')])
+        self.assertEqual(parse_storage_str('./local-save.sh'), [('./local-save.sh', None)])
+        self.assertEqual(parse_storage_str('b2,s3'), [('b2', None), ('s3', None)])
+        self.assertEqual(parse_storage_str(
             'b2,s3,./local-save.sh'),
             [('b2', None), ('s3', None), ('./local-save.sh', None)],
         )
-        self.assertEqual(bs._parse_save_to(
+        self.assertEqual(parse_storage_str(
             'b2,b2:onebuck/,b2://twobucks,s3://fitty,local:/home/user/'),
             [('b2', None), ('b2', 'onebuck'), ('b2', 'twobucks'), ('s3', 'fitty'), ('local', '/home/user')],
         )

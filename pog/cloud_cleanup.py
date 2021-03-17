@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-"""Cleanup script for Pog's cloud backup functionality.
+"""Cleanup script for pog cloud backups.
 
 In beta. Use at your own peril.
 
@@ -30,6 +30,7 @@ from tempfile import TemporaryDirectory
 from docopt import docopt
 
 from pog.cli import PogCli
+from pog.lib.blob_store import parse_storage_str
 from pog.fs.pogfs import get_cloud_fs
 
 
@@ -101,7 +102,8 @@ def main():
         if enc:
             config[opt] = enc
 
-    fs = get_cloud_fs(args.get('--backup'))()
+    target, bucket = parse_storage_str(args.get('--backup'))[0]
+    fs = get_cloud_fs(target)(bucket)
 
     reckless_abandon = args['--reckless-abandon']
 
