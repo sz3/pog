@@ -41,15 +41,15 @@ def get_cloud_fs(fs):
 # for example, we might have the b2 package installed, but not boto3 -- and that's fine,
 # until we ask for a file to go to s3 -- in which case we should get an error
 def s3fs(*args, **kwargs):
-    from .s3fs import s3fs as fs
+    from pog.fs.s3fs import s3fs as fs
     return fs(*args, **kwargs)
 
 
 def b2fs(*args, **kwargs):
-    from .b2fs import b2fs as fs
+    from pog.fs.b2fs import b2fs as fs
     return fs(*args, **kwargs)
 
 
 def localfs(*args, **kwargs):
-    from .localfs import localfs as fs
+    from pog.fs.localfs import localfs as fs
     return fs(*args, **kwargs)

@@ -16,8 +16,9 @@ class s3fs(Pogfs):
     def exists(self, remote_path):
         resource_s3 = boto3.resource('s3')
         try:
-            resource_s3.Object(self.bucket_name, remote_path).load()
-            return True
+            os = resource_s3.ObjectSummary(self.bucket_name, remote_path)
+            # .last_modifed for date...
+            return os.last_modified
         except ClientError as e:
             if e.response['Error']['Code'] == "404":
                 return False
