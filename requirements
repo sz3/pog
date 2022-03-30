@@ -1,5 +1,5 @@
 argon2-cffi
-b2
+b2sdk
 boto3
 docopt
 humanfriendly

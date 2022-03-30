@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -14,28 +15,25 @@ class s3fsTest(TestCase):
 
     def test_exists(self, mock_boto):
         mock_boto.resource.return_value = mock_boto
-        mock_boto.Object.return_value = mock_boto
+        mock_boto.ObjectSummary.return_value = SimpleNamespace(last_modified=12345)
 
         self.assertTrue(self.fs.exists('foo'))
 
         mock_boto.resource.assert_called_once_with('s3')
-        mock_boto.Object.assert_called_once_with('bucket', 'foo')
-        mock_boto.load.assert_called_once_with()
+        mock_boto.ObjectSummary.assert_called_once_with('bucket', 'foo')
 
-    def test_exists_false(self, mock_boto):
+    def test_exists__false(self, mock_boto):
         mock_boto.resource.return_value = mock_boto
-        mock_boto.Object.return_value = mock_boto
-        mock_boto.load.side_effect = ClientError({'Error': {'Code': '404', 'Message': 'Not Found'}}, 'HeadObject')
+        mock_boto.ObjectSummary.side_effect = ClientError({'Error': {'Code': '404', 'Message': 'Not Found'}}, 'HeadObject')
 
         self.assertFalse(self.fs.exists('foobar'))
 
         mock_boto.resource.assert_called_once_with('s3')
-        mock_boto.Object.assert_called_once_with('bucket', 'foobar')
-        mock_boto.load.assert_called_once_with()
+        mock_boto.ObjectSummary.assert_called_once_with('bucket', 'foobar')
 
-    def test_exists_kaboom(self, mock_boto):
+    def test_exists__kaboom(self, mock_boto):
         mock_boto.resource.return_value = mock_boto
-        mock_boto.Object.side_effect = Exception('onoes')
+        mock_boto.ObjectSummary.side_effect = Exception('onoes')
         with self.assertRaises(Exception) as e:
             self.fs.exists('uhoh')
 

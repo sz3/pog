@@ -33,7 +33,7 @@ setup(
         'zstandard>=0.11.1',
     ],
     extras_require={
-        'b2': ['b2'],
+        'b2': ['b2sdk'],
         's3': ['boto3'],
     },
 
