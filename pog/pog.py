@@ -116,7 +116,7 @@ def prepare_crypto_box(password, decryption_keyfile=None, encryption_keyfile=Non
 
 
 def blobname(content, secret):
-    content_hash = hmac.digest(secret, content, hashlib.sha256)
+    content_hash = hmac.digest(secret, content, sha256)
     return urlsafe_b64encode(content_hash)
 
 
@@ -185,14 +185,9 @@ class Encryptor():
         # otherwise, relative path
         return filename
 
-    def _write(self, f, data, box=None):
-        box = box or self.box
+    def _write(self, f, data):
         data = self._pad_data(data)
         f.write(self.box.encrypt(data))
-
-    def _mfn_get_all_blobs(self, mfn):
-        for og_filename, info in mfn.items():
-            yield from info['blobs']
 
     def save_manifest(self, mfn, filename=None):
         if not filename:
@@ -200,20 +195,7 @@ class Encryptor():
 
         with TemporaryDirectory(dir=_get_temp_dir()) as tempdir:
             temp_path = path.join(tempdir, filename)
-            with open(temp_path, 'wb') as f:
-                # calculate mfn index
-                all_blobs = sorted(list(self._mfn_get_all_blobs(mfn)))
-                index_bytes = dumps(all_blobs).encode('utf-8')
-                index_bytes = _compress(index_bytes, self.compresslevel)
-
-                # write header, then index
-                Manifest(self.box).write_header(f, self.index_box, len(index_bytes))
-                self._write(f, index_bytes, box=self.index_box)
-
-                # then mfn data
-                full_manifest_bytes = dumps(mfn).encode('utf-8')
-                self._write(f, _compress(full_manifest_bytes, self.compresslevel))
-
+            Manifest(self.box).save(temp_path, mfn, self.index_box, self.compresslevel)
             self.blob_store.save(filename, temp_path)
         return filename
 
@@ -270,17 +252,16 @@ class Manifest():
     def __init__(self, crypto_box):
         self.box = crypto_box
 
-    # BIG WIP
-    def write_header(self, f, index_box, compressed_index_length):
+    def _write_header(self, f, index_box, compressed_index_length):
         # index header
         payload_length = (compressed_index_length + _box_overhead(index_box)).to_bytes(MANIFEST_INDEX_BYTES, byteorder='big')
         index_header = index_box.encrypt(payload_length)
-        assert len(index_header) == _box_overhead(self.index_box) + MANIFEST_INDEX_BYTES
+        assert len(index_header) == _box_overhead(index_box) + MANIFEST_INDEX_BYTES
 
         # manifest header
-        pad_length = len(index_header) + _box_overhead(index_box)  # full index length
+        pad_length = len(index_header) + compressed_index_length + _box_overhead(index_box)
         pad_length = pad_length.to_bytes(MANIFEST_INDEX_BYTES, byteorder='big')
-        manifest_header = self.box.encrypt()
+        manifest_header = self.box.encrypt(pad_length)
 
         # write both. Order will be:
         # manifest header, index header, index, manifest
@@ -291,11 +272,27 @@ class Manifest():
         for og_filename, info in mfn.items():
             yield from info['blobs']
 
+    def save(self, filename, mfn, index_box, compresslevel=6):
+        with open(filename, 'wb') as f:
+            all_blobs = sorted(list(self._mfn_get_all_blobs(mfn)))
+            index_bytes = dumps(all_blobs).encode('utf-8')
+            index_bytes = _compress(index_bytes, compresslevel)
+
+            # write header, then index
+            self._write_header(f, index_box, len(index_bytes))
+            bites = index_box.encrypt(index_bytes)
+            f.write(bites)
+
+            # then mfn data
+            full_manifest_bytes = dumps(mfn).encode('utf-8')
+            full_manifest_bytes = _compress(full_manifest_bytes, compresslevel)
+            f.write(self.box.encrypt(full_manifest_bytes))
+
     def _read_header(self, f):
         header_bytes = f.read(self.HEADER_SIZE)
-        file_key = self.box.decrypt(header_bytes)
-        assert len(file_key) == MANIFEST_INDEX_BYTES
-        pad_length = int.from_bytes(header_bytes, 'big')
+        pad_length = self.box.decrypt(header_bytes)
+        assert len(pad_length) == MANIFEST_INDEX_BYTES
+        pad_length = int.from_bytes(pad_length, 'big')
         return pad_length
 
     def load(self, filename):
@@ -338,7 +335,7 @@ class ManifestIndex():
     def load(self, filename):
         with open(filename, 'rb') as f:
             # skip first header
-            f.read(ManifestReader.HEADER_SIZE)
+            f.read(Manifest.HEADER_SIZE)
             # then read the real deal
             payload_len = self._read_index_header(f)
             data = f.read(payload_len)
@@ -348,7 +345,7 @@ class ManifestIndex():
     def show(self, *inputs):
         for filename in download_list(inputs):
             print('*** {}:'.format(filename), file=sys.stderr)
-            mfn_index = self.load_manifest_index(filename)
+            mfn_index = self.load(filename)
             for blob in mfn_index:
                 print(blob)
 
@@ -359,7 +356,7 @@ class Decryptor():
         self.consume = consume
 
     def load_manifest(self, filename):
-        return ManifestReader(self.box).load(filename)
+        return Manifest(self.box).load(filename)
 
     def decrypt_single_blob(self, filename, out):
         with open(filename, 'rb') as f:
@@ -369,7 +366,7 @@ class Decryptor():
             remove(filename)
 
     def dump_manifest(self, *inputs, show_filenames=True):
-        ManifestReader(self.box).show(*inputs, show_filenames=show_filenames)
+        Manifest(self.box).show(*inputs, show_filenames=show_filenames)
 
     def decrypt(self, *inputs):
         for filename, fs_info, partials in download_list(inputs, extract=True):
@@ -409,18 +406,19 @@ def main():
 
     decrypt = (
         args.get('--dump-manifest') or
-        args.get('--dump-manifest-index') or
         args.get('--decrypt')
     )
     if decrypt:
         consume = args.get('--consume')
-        d = Decryptor(secret, crypto_box, consume)
+        d = Decryptor(crypto_box, consume)
         if args.get('--dump-manifest'):
             d.dump_manifest(*args['<INPUTS>'])
-        elif args.get('--dump-manifest-index'):
-            d.dump_manifest_index(*args['<INPUTS>'])
         else:
             d.decrypt(*args['<INPUTS>'])
+
+    elif args.get('--dump-manifest-index'):
+        mi = ManifestIndex(secret)
+        mi.show(*args['<INPUTS>'])
 
     else:
         backup_label = args.get('--label')

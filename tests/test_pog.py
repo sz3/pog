@@ -41,15 +41,15 @@ def make_big_file(filename):
     return hash_md5.hexdigest()
 
 
-class KeyfileTest(TestDirMixin, TestCase):
-    encryption_flag = f'--keyfile={POG_ROOT}/tests/samples/only_for_testing.encrypt'
-    decryption_flag = encryption_flag
+class MainTest(TestDirMixin, TestCase):
+    encryption_flag = f'--encrypt={POG_ROOT}/tests/samples/only_for_testing.encrypt'
+    decryption_flag = f'--decrypt={POG_ROOT}/tests/samples/only_for_testing.decrypt'
 
-    tiny_sample_blobname = 'BvbQeMboxw1jFDXe_ed5QsDWay5kvtlZ_qx7buz_z2M='
-    another_sample_blobname = 'vuWyVoUolWk2qRZ-48mvEoTuR5_SuzrN8uO6qusRZSE='
+    tiny_sample_blobname = '_g-fcIQ2ukYnb1SUMJXWOKqCWt5d-p6b5VE0HxpEXNM='
+    another_sample_blobname = 'Fq_yn7rYp7kZQRq4RT9r4LbY88bevsQ8ylKdHC-90oQ='
 
-    consistency_mfn = 'keyfile-sample.mfn'
-    consistency_blobname = 'US-1DnY1AVF1huiGj10G9SEGwCHa4GVxJcBnaCuAcXk='
+    consistency_mfn = 'asymmetric-sample.mfn'
+    consistency_blobname = 'hq3mhX2mG_i_aVy2wv6jMGC5DjlerpvJ8O1Y_iayfPY='
 
     def test_round_trip(self):
         # encrypt our sample files
@@ -81,7 +81,7 @@ class KeyfileTest(TestDirMixin, TestCase):
         self.assertCountEqual(paths, [path.basename(manifest_name)] + blobs)
 
         # decrypt, consuming our encrypted inputs
-        dec = self.run_command(self.decryption_flag, '--decrypt', '--consume', manifest_name)
+        dec = self.run_command(self.decryption_flag, '--consume', manifest_name)
         self.assertEqual(dec, ['*** 1/2: another_sample.txt', '*** 2/2: tiny_sample.txt'])
 
         # validate the directory looks like we expect it to
@@ -130,7 +130,7 @@ class KeyfileTest(TestDirMixin, TestCase):
         # regression test for our header/encryption format -- try to decrypt a known file
         with open(path.join(self.working_dir.name, 'out.txt'), 'wb') as f:
             dec = self.run_command(
-                self.decryption_flag, '--decrypt', f'{POG_ROOT}/tests/samples/{self.consistency_blobname}', stdout=f
+                self.decryption_flag, f'{POG_ROOT}/tests/samples/{self.consistency_blobname}', stdout=f
             )
             self.assertEqual(dec, [])
 
@@ -145,7 +145,7 @@ class KeyfileTest(TestDirMixin, TestCase):
         for filename in [self.consistency_blobname, self.consistency_mfn]:
             copyfile(f'{POG_ROOT}/tests/samples/{filename}', f'{self.working_dir.name}/{filename}')
 
-        dec = self.run_command(self.decryption_flag, '--decrypt', '--consume', self.consistency_mfn)
+        dec = self.run_command(self.decryption_flag, '--consume', self.consistency_mfn)
         self.assertEqual(dec, ['*** 1/1: 8.txt'])
 
         # read the decrypted file
@@ -181,7 +181,7 @@ class KeyfileTest(TestDirMixin, TestCase):
         self.assertEqual(show_mfn_idx, [self.consistency_blobname])
 
         # --decrypt
-        dec = self.run_command(self.decryption_flag, '--decrypt', f'local:///{self.consistency_mfn}')
+        dec = self.run_command(self.decryption_flag, f'local:///{self.consistency_mfn}')
         self.assertEqual(dec, ['*** 1/1: 8.txt'])
 
         # read the decrypted file
@@ -214,7 +214,7 @@ class KeyfileTest(TestDirMixin, TestCase):
         )
 
         # decrypt, consuming our encrypted inputs
-        dec = self.run_command(self.decryption_flag, '--decrypt', '--consume', manifest_name)
+        dec = self.run_command(self.decryption_flag, '--consume', manifest_name)
         self.assertEqual(dec, [
             '*** 1/2: {}'.format(self.another_sample),
             '*** 2/2: {}'.format(self.tiny_sample),
@@ -259,17 +259,6 @@ class KeyfileTest(TestDirMixin, TestCase):
             ]
         )
 
-
-class AsymmetricCryptoTest(KeyfileTest):
-    encryption_flag = f'--encryption-keyfile={POG_ROOT}/tests/samples/only_for_testing.encrypt'
-    decryption_flag = f'--decryption-keyfile={POG_ROOT}/tests/samples/only_for_testing.decrypt'
-
-    tiny_sample_blobname = 'Fx1xB8L8L1cRPdBzkr-L8mzPusnzEBjhrQseB3DaCU4='
-    another_sample_blobname = 'vyGFr38Y8A0xhonhxuiZXkjS8vIVjY6VDH0-BiLJuXo='
-
-    consistency_mfn = 'asymmetric-sample.mfn'
-    consistency_blobname = 'hq3mhX2mG_i_aVy2wv6jMGC5DjlerpvJ8O1Y_iayfPY='
-
     def test_manifest_index_ordering(self):
         '''
         We sort the blobs stored in the manifest index, to limit information about which blobs belong together.
@@ -288,7 +277,7 @@ class AsymmetricCryptoTest(KeyfileTest):
         blobs = [l for l in enc if not l.startswith('***')]
 
         # check that the manifest index looks good
-        show_mfn = self.run_command(self.decryption_flag, '--dump-manifest-index', manifest_name)
+        show_mfn = self.run_command(self.encryption_flag, '--dump-manifest-index', manifest_name)
         # manifest index sorted by blobname
         self.assertEqual(show_mfn, sorted(blobs))
 
@@ -305,38 +294,6 @@ class BigFileTest(TestDirMixin, TestCase):
     def tearDownClass(cls):
         with cls.input_dir:
             pass
-
-    def test_with_keyfile(self):
-        # encrypt our sample file
-        enc = self.run_command(f'--keyfile={POG_ROOT}/tests/samples/only_for_testing.encrypt', BigFileTest.big_sample)
-        manifest_name = glob(path.join(self.working_dir.name, '*.mfn'))[0]
-
-        self.assertEqual(enc, [
-            f'*** 1/2: {self.big_sample}',
-            'xyQWj-UXXZpwWXPF2c5_MsBm3cTfZFXayUVLLMlkt4Y=',
-            'HXBJ_N4EM2rywLdOWT02hccp4c_oLk0QyD2lc3vUttw=',
-            '*** 2/2: {}'.format(path.basename(manifest_name)),
-        ])
-        blobs = [l for l in enc if not l.startswith('***')]
-
-        # check that the manifest looks good
-        show_mfn = self.run_command(f'--keyfile={POG_ROOT}/tests/samples/only_for_testing.encrypt', '--dump-manifest',
-                                    manifest_name)
-        self.assertEqual(show_mfn, ['* big_sample.bin:'] + blobs)
-
-        # decrypt, consuming our encrypted inputs
-        dec = self.run_command(f'--keyfile={POG_ROOT}/tests/samples/only_for_testing.encrypt', '--decrypt', '--consume',
-                               manifest_name)
-        self.assertEqual(dec, ['*** 1/1: big_sample.bin'])
-
-        # check that the directory looks good
-        paths = listdir(self.working_dir.name)
-        self.assertEqual(paths, ['big_sample.bin'])
-
-        # check that the output file is what we expect
-        filename = path.join(self.working_dir.name, 'big_sample.bin')
-        actual_checksum = compute_checksum(filename)
-        self.assertEqual(BigFileTest.big_sample_checksum, actual_checksum)
 
     def test_with_asymmetric(self):
         # encrypt our sample file
