@@ -5,8 +5,7 @@
 In beta. Use at your own peril.
 
 Usage:
-  pog-cleanup [--keyfile=<filename> | --decryption-keyfile=<filename> | --encryption-keyfile=<filename>]
-              [--backup=<b2|s3|..>] [--reckless-abandon] [--exp-similarity-check]
+  pog-cleanup --encrypt=<filename> [--backup=<b2|s3|..>] [--reckless-abandon] [--exp-similarity-check]
   pog-cleanup (-h | --help)
 
 Examples:
@@ -15,9 +14,7 @@ Examples:
 Options:
   -h --help                        Show this help.
   --version                        Show version.
-  --decryption-keyfile=<filename>  Use asymmetric decryption -- <filename> contains the (binary) private key.
-  --encryption-keyfile=<filename>  Use asymmetric encryption -- <filename> contains the (binary) public key.
-  --keyfile=<filename>             Instead of prompting for a password, use file contents as the secret.
+  --encrypt=<filename>             Keyfile for encryption -- <filename> contains the (binary) public key.
   --backup=<b2|s3|filename|...>    Cloud service (s3, b2) to scrutinize.
   --reckless-abandon               Delete files.
   --exp-similarity-check           Attempt to clean up old backups if newer ones seem to supercede them. (experimental!)
@@ -144,7 +141,7 @@ def main():
     args = docopt(__doc__, version='Pog Cloud Cleanup 0.0')
 
     config = {}
-    for opt in ['encryption-keyfile', 'decryption-keyfile', 'keyfile']:
+    for opt in ['encrypt']:
         enc = args.get('--{}'.format(opt))
         if enc:
             config[opt] = enc

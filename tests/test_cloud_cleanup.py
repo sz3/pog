@@ -7,10 +7,10 @@ from pog.fs.localfs import localfs
 
 class CloudCleanupTest(TestDirMixin, TestCase):
     script = 'pog.cloud_cleanup'
-    keyfile_flag = f'--keyfile={POG_ROOT}/tests/samples/only_for_testing.encrypt'
+    keyfile_flag = f'--encrypt={POG_ROOT}/tests/samples/only_for_testing.encrypt'
 
-    consistency_mfn = 'keyfile-sample.mfn'
-    consistency_blobname = 'US-1DnY1AVF1huiGj10G9SEGwCHa4GVxJcBnaCuAcXk='
+    consistency_mfn = 'asymmetric-sample.mfn'
+    consistency_blobname = '77mDjOADENO8qjc81QgaSuRyIJe9vGqsrF7ndGXebXQ='
 
     def setUp(self):
         super().setUp()
@@ -34,7 +34,7 @@ class CloudCleanupTest(TestDirMixin, TestCase):
             f'{self.working_dir.name}/aa-2021-01-12T00:55.mfn',
             f'{self.working_dir.name}/aa-2021-01-13T00:55.mfn',
             f'{self.working_dir.name}/data/',
-            f'{self.working_dir.name}/data/US-1DnY1AVF1huiGj10G9SEGwCHa4GVxJcBnaCuAcXk=',
+            f'{self.working_dir.name}/data/{self.consistency_blobname}',
             f'{self.working_dir.name}/data/uselessblob',
         ])
 
@@ -50,7 +50,7 @@ class CloudCleanupTest(TestDirMixin, TestCase):
         self.assertEqual(self.fs.list_files(recursive=True), [
             f'{self.working_dir.name}/aa-2021-01-13T00:55.mfn',
             f'{self.working_dir.name}/data/',
-            f'{self.working_dir.name}/data/US-1DnY1AVF1huiGj10G9SEGwCHa4GVxJcBnaCuAcXk=',
+            f'{self.working_dir.name}/data/{self.consistency_blobname}',
         ])
 
     def test_cleanup_similarity_dryrun(self):
@@ -67,7 +67,7 @@ class CloudCleanupTest(TestDirMixin, TestCase):
             f'{self.working_dir.name}/2.mfn',
             f'{self.working_dir.name}/3.mfn',
             f'{self.working_dir.name}/data/',
-            f'{self.working_dir.name}/data/US-1DnY1AVF1huiGj10G9SEGwCHa4GVxJcBnaCuAcXk=',
+            f'{self.working_dir.name}/data/{self.consistency_blobname}',
             f'{self.working_dir.name}/data/uselessblob',
         ])
 
@@ -83,5 +83,5 @@ class CloudCleanupTest(TestDirMixin, TestCase):
         self.assertEqual(self.fs.list_files(recursive=True), [
             f'{self.working_dir.name}/3.mfn',
             f'{self.working_dir.name}/data/',
-            f'{self.working_dir.name}/data/US-1DnY1AVF1huiGj10G9SEGwCHa4GVxJcBnaCuAcXk=',
+            f'{self.working_dir.name}/data/{self.consistency_blobname}',
         ])
