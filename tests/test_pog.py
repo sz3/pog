@@ -49,7 +49,7 @@ class MainTest(TestDirMixin, TestCase):
     another_sample_blobname = 'Fq_yn7rYp7kZQRq4RT9r4LbY88bevsQ8ylKdHC-90oQ='
 
     consistency_mfn = 'asymmetric-sample.mfn'
-    consistency_blobname = 'hq3mhX2mG_i_aVy2wv6jMGC5DjlerpvJ8O1Y_iayfPY='
+    consistency_blobname = '77mDjOADENO8qjc81QgaSuRyIJe9vGqsrF7ndGXebXQ='
 
     def test_round_trip(self):
         # encrypt our sample files
@@ -177,7 +177,7 @@ class MainTest(TestDirMixin, TestCase):
         self.assertEqual(show_mfn, ['* 8.txt:', self.consistency_blobname])
 
         # --dump-manifest-index
-        show_mfn_idx = self.run_command(self.decryption_flag, '--dump-manifest-index', f'local:///{self.consistency_mfn}')
+        show_mfn_idx = self.run_command(self.encryption_flag, '--dump-manifest-index', f'local:///{self.consistency_mfn}')
         self.assertEqual(show_mfn_idx, [self.consistency_blobname])
 
         # --decrypt
@@ -297,30 +297,30 @@ class BigFileTest(TestDirMixin, TestCase):
 
     def test_with_asymmetric(self):
         # encrypt our sample file
-        enc = self.run_command(f'--encryption-keyfile={POG_ROOT}/tests/samples/only_for_testing.encrypt',
+        enc = self.run_command(f'--encrypt={POG_ROOT}/tests/samples/only_for_testing.encrypt',
                                BigFileTest.big_sample)
         manifest_name = glob(path.join(self.working_dir.name, '*.mfn'))[0]
 
         self.assertEqual(enc, [
             f'*** 1/2: {self.big_sample}',
-            'RiOpsEQbQpxrBvXL1s047hq54EhFXxWqwag-vMuiRfc=',
-            'YdK86P4e2191CxVBhZwvvPtwOLU6Ve1NzMhwLjxVXqg=',
+            'Cjon7Mj1ydMq9zS7bq2lNexm8X-eP_OtrUJkPCQeKkQ=',
+            'Pd4K55jxpc5RYTm5bJjCOYojcoHD_0sN7gbj9Zy18wY=',
             '*** 2/2: {}'.format(path.basename(manifest_name)),
         ])
         blobs = [l for l in enc if not l.startswith('***')]
 
         # check that the manifest looks good
-        show_mfn = self.run_command(f'--decryption-keyfile={POG_ROOT}/tests/samples/only_for_testing.decrypt',
+        show_mfn = self.run_command(f'--decrypt={POG_ROOT}/tests/samples/only_for_testing.decrypt',
                                     '--dump-manifest', manifest_name)
         self.assertEqual(show_mfn, ['* big_sample.bin:'] + blobs)
 
         # check the index as well -- make sure it's sorted
-        show_mfn_index = self.run_command(f'--encryption-keyfile={POG_ROOT}/tests/samples/only_for_testing.encrypt',
+        show_mfn_index = self.run_command(f'--encrypt={POG_ROOT}/tests/samples/only_for_testing.encrypt',
                                           '--dump-manifest-index', manifest_name)
         self.assertEqual(show_mfn_index, sorted(blobs))
 
         # decrypt, consuming our encrypted inputs
-        dec = self.run_command(f'--decryption-keyfile={POG_ROOT}/tests/samples/only_for_testing.decrypt', '--consume',
+        dec = self.run_command(f'--decrypt={POG_ROOT}/tests/samples/only_for_testing.decrypt', '--consume',
                                manifest_name)
         self.assertEqual(dec, ['*** 1/1: big_sample.bin'])
 
@@ -336,29 +336,29 @@ class BigFileTest(TestDirMixin, TestCase):
     def test_smaller_chunk_size(self):
         # encrypt our sample file
         enc = self.run_command(
-            f'--encryption-keyfile={POG_ROOT}/tests/samples/only_for_testing.encrypt', BigFileTest.big_sample,
+            f'--encrypt={POG_ROOT}/tests/samples/only_for_testing.encrypt', BigFileTest.big_sample,
             '--chunk-size=50MB'
         )
         manifest_name = glob(path.join(self.working_dir.name, '*.mfn'))[0]
 
         self.assertEqual(enc, [
             f'*** 1/2: {self.big_sample}',
-            'PURfe1ei1aqpPRarpAfKkcKPRSHdo5hPH-bvfYND2KM=',
-            'nnL4ta-BChpb36CIFeZUG4lJLiz8l0YVv94IaABcgyU=',
-            'YdK86P4e2191CxVBhZwvvPtwOLU6Ve1NzMhwLjxVXqg=',
+            '0pVb1a5MMoTvDpkO8VZMM6uh586Sc8M5ekLIeoXfMto=',
+            'Ccggzvb9SkdAv4l3ENcBxnxePoAmg79WUe4ey2MRLEc=',
+            'Pd4K55jxpc5RYTm5bJjCOYojcoHD_0sN7gbj9Zy18wY=',
             '*** 2/2: {}'.format(path.basename(manifest_name)),
         ])
         blobs = [l for l in enc if not l.startswith('***')]
 
         # check that the manifest looks good
-        show_mfn = self.run_command(f'--decryption-keyfile={POG_ROOT}/tests/samples/only_for_testing.decrypt',
+        show_mfn = self.run_command(f'--decrypt={POG_ROOT}/tests/samples/only_for_testing.decrypt',
                                     '--dump-manifest', manifest_name)
         self.assertEqual(show_mfn, ['* big_sample.bin:'] + blobs)
 
         # check the
 
         # decrypt, consuming our encrypted inputs
-        dec = self.run_command(f'--decryption-keyfile={POG_ROOT}/tests/samples/only_for_testing.decrypt', '--consume',
+        dec = self.run_command(f'--decrypt={POG_ROOT}/tests/samples/only_for_testing.decrypt', '--consume',
                                manifest_name)
         self.assertEqual(dec, ['*** 1/1: big_sample.bin'])
 
