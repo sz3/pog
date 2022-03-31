@@ -45,11 +45,11 @@ class MainTest(TestDirMixin, TestCase):
     encryption_flag = f'--encrypt={POG_ROOT}/tests/samples/only_for_testing.encrypt'
     decryption_flag = f'--decrypt={POG_ROOT}/tests/samples/only_for_testing.decrypt'
 
-    tiny_sample_blobname = '_g-fcIQ2ukYnb1SUMJXWOKqCWt5d-p6b5VE0HxpEXNM='
-    another_sample_blobname = 'Fq_yn7rYp7kZQRq4RT9r4LbY88bevsQ8ylKdHC-90oQ='
+    tiny_sample_blobname = 'I71vGLBszQsl429bbklX-6ahwB1gY_PPV4qfinkB49E='
+    another_sample_blobname = 'u-rWXcJ2AAY6XE2CXRaDJjyGP4Lg6Gj-h8Hsm1FM2mE='
 
     consistency_mfn = 'asymmetric-sample.mfn'
-    consistency_blobname = '77mDjOADENO8qjc81QgaSuRyIJe9vGqsrF7ndGXebXQ='
+    consistency_blobname = 'rKRdyE8kWxM1s_0TriGb_igkwDkdwKzQ4OEE00HNnYk='
 
     def test_round_trip(self):
         # encrypt our sample files
@@ -303,8 +303,8 @@ class BigFileTest(TestDirMixin, TestCase):
 
         self.assertEqual(enc, [
             f'*** 1/2: {self.big_sample}',
-            'Cjon7Mj1ydMq9zS7bq2lNexm8X-eP_OtrUJkPCQeKkQ=',
-            'Pd4K55jxpc5RYTm5bJjCOYojcoHD_0sN7gbj9Zy18wY=',
+            '8sHhqqK-83fcLEAhkw0AZGnefCBGBpy0mte6uegY_IY=',
+            'WwdV1vRzgFpFUThH6PrjSkfY61w6twTfix1D3QJzTvA=',
             '*** 2/2: {}'.format(path.basename(manifest_name)),
         ])
         blobs = [l for l in enc if not l.startswith('***')]
@@ -343,9 +343,9 @@ class BigFileTest(TestDirMixin, TestCase):
 
         self.assertEqual(enc, [
             f'*** 1/2: {self.big_sample}',
-            '0pVb1a5MMoTvDpkO8VZMM6uh586Sc8M5ekLIeoXfMto=',
-            'Ccggzvb9SkdAv4l3ENcBxnxePoAmg79WUe4ey2MRLEc=',
-            'Pd4K55jxpc5RYTm5bJjCOYojcoHD_0sN7gbj9Zy18wY=',
+            'go1cB-Asb709LlxrJM0GO7bj7Mg93LOCMeIbJYPUkFQ=',
+            'TnVW4OjBJiFFiI8AMrrqM1nuZnlqtCHZMRN8ICuEQOc=',
+            'WwdV1vRzgFpFUThH6PrjSkfY61w6twTfix1D3QJzTvA=',
             '*** 2/2: {}'.format(path.basename(manifest_name)),
         ])
         blobs = [l for l in enc if not l.startswith('***')]

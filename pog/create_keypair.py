@@ -5,11 +5,11 @@
 from os import chmod
 from stat import S_IREAD, S_IRGRP
 
-from nacl.public import PrivateKey
+from mcleece.crypto_box import PrivateKey, PublicKey
 
 
 def generate(filename):
-    secret_key = PrivateKey.generate()
+    secret_key, public_key = PrivateKey.generate()
     decryption_keyfile = '{}.decrypt'.format(filename)
     with open(decryption_keyfile, 'wb') as f:
         f.write(bytes(secret_key))
@@ -17,7 +17,7 @@ def generate(filename):
 
     encryption_keyfile = '{}.encrypt'.format(filename)
     with open(encryption_keyfile, 'wb') as f:
-        f.write(bytes(secret_key.public_key))
+        f.write(bytes(public_key))
     chmod(encryption_keyfile, S_IREAD | S_IRGRP)
 
     return encryption_keyfile, decryption_keyfile
@@ -25,12 +25,8 @@ def generate(filename):
 
 def main():
     enc, dec = generate('pki')
-    print('`{}` contains the key for encryption'.format(enc))
-    print('`{}` contains the key for decryption'.format(dec))
-    print(
-        'The private key is in `{}`. It can be used to regenerate '
-        'the "public" (encryption) key if necessary.'.format(dec)
-    )
+    print('`{}` contains the (public) key for encryption'.format(enc))
+    print('`{}` contains the (private) key for decryption'.format(dec))
     print('Keep it secret. Keep it safe.')
 
 

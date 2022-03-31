@@ -46,8 +46,8 @@ from os import fdopen, makedirs, remove, utime, path, getenv
 from tempfile import TemporaryDirectory, gettempdir
 
 import zstandard as zstd
+from mcleece.crypto_box import PrivateKey, PublicKey, SealedBox as mcleece_SealedBox
 from nacl.secret import SecretBox as nacl_SecretBox
-from nacl.public import PrivateKey, PublicKey, SealedBox as nacl_SealedBox
 from nacl.utils import random as nacl_random
 from docopt import docopt
 from humanfriendly import parse_size
@@ -92,8 +92,8 @@ def _decompress(bites):
 def _box_overhead(box):
     if box == nacl_SecretBox or isinstance(box, nacl_SecretBox):
         overhead = nacl_SecretBox.NONCE_SIZE + nacl_SecretBox.MACBYTES
-    else:  # nacl_SealedBox
-        overhead = 48
+    else:  # mcleece_SealedBox
+        overhead = box.message_header_size()  # it's 314
     return overhead
 
 
@@ -104,13 +104,14 @@ def prepare_crypto_box(password, decryption_keyfile=None, encryption_keyfile=Non
     if encryption_keyfile:
         with open(encryption_keyfile, 'rb') as f:
             secret = f.read()
-        box = nacl_SealedBox(PublicKey(secret))
+        box = mcleece_SealedBox(PublicKey(secret))
+        secret = sha256(secret).digest()
 
     if decryption_keyfile:
         with open(decryption_keyfile, 'rb') as f:
             dont_share_this_secret = f.read()
         private_key = PrivateKey(dont_share_this_secret)
-        box = nacl_SealedBox(private_key)
+        box = mcleece_SealedBox(private_key)
 
     return secret, box
 
@@ -247,7 +248,7 @@ class Encryptor():
 
 
 class Manifest():
-    HEADER_SIZE = _box_overhead(nacl_SealedBox) + MANIFEST_INDEX_BYTES
+    HEADER_SIZE = _box_overhead(mcleece_SealedBox) + MANIFEST_INDEX_BYTES
 
     def __init__(self, crypto_box):
         self.box = crypto_box
