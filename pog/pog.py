@@ -4,40 +4,31 @@
 (the G is silent)
 
 Usage:
-  pog <INPUTS>...
-  pog [--keyfile=<filename> | --encryption-keyfile=<filename>] [--save-to=<b2|s3|script.sh|...>] [--chunk-size=<bytes>]
+  pog --encrypt=<filename> [--save-to=<b2|s3|script.sh|...>] [--chunk-size=<bytes>]
       [--compresslevel=<1-22>] [--concurrency=<1-N>] [--store-absolute-paths] [--label=<backup>] <INPUTS>...
-  pog [--keyfile=<filename> | --decryption-keyfile=<filename>] [--decrypt | --dump-manifest] [--consume] <INPUTS>...
-  pog [--keyfile=<filename> | --decryption-keyfile=<filename> | --encryption-keyfile=<filename>] [--dump-manifest-index]
-      <INPUTS>...
+  pog --decrypt=<filename> [--dump-manifest] [--consume] <INPUTS>...
+  pog --encrypt=<filename> [--dump-manifest-index] <INPUTS>...
   pog (-h | --help)
 
 Examples:
-  python -m pog.pog /path/to/file1 /path/to/file2
-  pog /path/to/file1 /path/to/file2
-  pog --chunk-size=50MB bigfile
-  pog --decrypt 2019-10-31T12:34:56.012345.mfn
+  pog --encrypt=pki.encrypt /path/to/myfile.original > outputs.txt
+  pog --decrypt=pki.decrypt $(cat outputs.txt) > myfile.copy
 
-  pog /home/myfile.original > outputs.txt
-  pog --decrypt $(cat outputs.txt) > myfile.copy
-
-  pog --encryption-keyfile=pki.encrypt /path/to/file* --save-to=s3://mybucket,b2://myotherbucket
-  pog --encryption-keyfile=pki.encrypt --dump-manifest-index 2019-*
-  pog --decryption-keyfile=pki.decrypt s3://mybucket/2019-10-31T12:34:56.012345.mfn
-  pog --decryption-keyfile=pki.decrypt --consume 2019-10-31T12:34:56.012345.mfn
+  pog --encrypt=pki.encrypt /path/to/file* --save-to=s3://mybucket,b2://myotherbucket
+  pog --encrypt=pki.encrypt --dump-manifest-index 2019-*
+  pog --decrypt=pki.decrypt s3://mybucket/2019-10-31T12:34:56.012345.mfn
+  pog --decrypt=pki.decrypt --consume 2019-10-31T12:34:56.012345.mfn
 
 Options:
   -h --help                        Show this help.
   --version                        Show version.
   -l --label=<backup>              The prefix/label for the backup manifest file.
   --chunk-size=<bytes>             When encrypting, split large files into <chunkMB> size parts [default: 100MB].
-  --compresslevel=<1-22>           Zstd compression level during encryption. [default: 3]
+  --compresslevel=<1-22>           Zstd compression level. [default: 3]
   --concurrency=<1-N>              How many threads to use for uploads. [default: 8]
-  -d --decrypt                     Decrypt. Automatically assumed when --decryption-keyfile is used.
   --consume                        Used with decrypt -- after decrypting a blob, delete it from disk to conserve space.
-  --decryption-keyfile=<filename>  Use asymmetric decryption -- <filename> contains the (binary) private key.
-  --encryption-keyfile=<filename>  Use asymmetric encryption -- <filename> contains the (binary) public key.
-  --keyfile=<filename>             Instead of prompting for a password, use file contents as the secret.
+  --decrypt=<filename>             Decryption -- <filename> contains the (binary) private key.
+  --encrypt=<filename>             Encryption -- <filename> contains the (binary) public key.
   --store-absolute-paths           Store files under their absolute paths (i.e. for backups)
   --save-to=<b2|s3|/script.sh|...> During encryption, where to save encrypted data. Can be a cloud service (s3, b2), or the
                                    path to a script to run with (<encrypted file name>, <temp file path>).
@@ -50,7 +41,7 @@ from datetime import datetime
 from getpass import getpass
 from hashlib import sha256
 from json import dumps, loads
-from os import fdopen, makedirs, remove, utime, path
+from os import fdopen, makedirs, remove, utime, path, getenv
 from tempfile import TemporaryDirectory, gettempdir
 
 import zstandard as zstd
@@ -66,7 +57,7 @@ from pog.lib.secret import pass_to_hash
 
 
 KEY_SIZE = 32  # 256 bits
-MANIFEST_INDEX_BYTES = 4  # up to 4GB -- only enforced for asymmetric encryption
+MANIFEST_INDEX_BYTES = 4  # up to 4GB
 
 
 stdoutfd = None
@@ -131,6 +122,8 @@ def get_asymmetric_encryption(decryption_keyfile=None, encryption_keyfile=None):
 
 def blobname(content, secret):
     content_hash = sha256(content).digest()
+
+    # could use hmac here... not sure?
     return urlsafe_b64encode(sha256(secret + content_hash).digest())
 
 
@@ -138,15 +131,11 @@ def _print_progress(count, total, filename):
     print('*** {}/{}: {}'.format(count, total, filename))
 
 
-def get_secret(keyfile=None):
-    if keyfile:
-        with open(keyfile, 'rb') as f:
-            h = sha256()
-            buffer = f.read(16384)
-            while buffer:
-                h.update(buffer)
-                buffer = f.read(16384)
-            return h.digest()
+def get_secret():
+    # if env is set, return env?
+    password = getenv('POG_SECRET')
+    if password:
+        return pass_to_hash(password)
 
     # if keyfile failed, prompt for password
     while True:
@@ -395,21 +384,20 @@ class Decryptor():
 
 
 def main():
-    args = docopt(__doc__, version='Pog 0.2.0')
+    args = docopt(__doc__, version='Pog 0.4.0')
     chunk_size = parse_size(args.get('--chunk-size'))
     compresslevel = int(args.get('--compresslevel'))
     concurrency = int(args.get('--concurrency'))
     store_absolute_paths = args.get('--store-absolute-paths')
 
-    secret, crypto_box = get_asymmetric_encryption(args.get('--decryption-keyfile'), args.get('--encryption-keyfile'))
+    secret, crypto_box = get_asymmetric_encryption(args.get('--decrypt'), args.get('--encrypt'))
     if not crypto_box and not secret:
         secret = get_secret(args.get('--keyfile'))
 
     decrypt = (
-        args.get('--decrypt') or
         args.get('--dump-manifest') or
         args.get('--dump-manifest-index') or
-        args.get('--decryption-keyfile')
+        args.get('--decrypt')
     )
     if decrypt:
         consume = args.get('--consume')
