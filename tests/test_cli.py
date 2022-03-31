@@ -14,26 +14,22 @@ class PogCliTest(TestDirMixin, TestCase):
 
         # pick decryption file
         for i in range(3):
-            cli.set_keyfiles('foo.encrypt', 'foo.decrypt', 'other.keyfile')
-            self.assertEqual(cli.config.get('decryption-keyfile'), 'foo.decrypt')
-            self.assertEqual(cli.config.get('encryption-keyfile'), 'foo.encrypt')
-            self.assertEqual(cli.config.get('keyfile'), None)
+            cli.set_keyfiles('foo.encrypt', 'foo.decrypt')
+            self.assertEqual(cli.config.get('decrypt'), 'foo.decrypt')
+            self.assertEqual(cli.config.get('encrypt'), 'foo.encrypt')
 
         cli.set_keyfiles('foo.encrypt', 'other.keyfile')
-        self.assertEqual(cli.config.get('decryption-keyfile'), None)
-        self.assertEqual(cli.config.get('encryption-keyfile'), 'foo.encrypt')
-        self.assertEqual(cli.config.get('keyfile'), None)
+        self.assertEqual(cli.config.get('decrypt'), None)
+        self.assertEqual(cli.config.get('encrypt'), 'foo.encrypt')
 
         cli.set_keyfiles('other.keyfile', 'second.keyfile')
-        self.assertEqual(cli.config.get('decryption-keyfile'), None)
-        self.assertEqual(cli.config.get('encryption-keyfile'), None)
-        self.assertEqual(cli.config.get('keyfile'), 'other.keyfile')
+        self.assertEqual(cli.config.get('decrypt'), None)
+        self.assertEqual(cli.config.get('encrypt'), None)
 
         # clear
         cli.set_keyfiles()
-        self.assertEqual(cli.config.get('decryption-keyfile'), None)
-        self.assertEqual(cli.config.get('encryption-keyfile'), None)
-        self.assertEqual(cli.config.get('keyfile'), None)
+        self.assertEqual(cli.config.get('decrypt'), None)
+        self.assertEqual(cli.config.get('encrypt'), None)
 
     @patch('pog.cli.Popen', autospec=True)
     def test_dump_manifest(self, mock_run):
@@ -53,7 +49,7 @@ class PogCliTest(TestDirMixin, TestCase):
         env = dict(environ)
         env['PYTHONPATH'] = POG_ROOT
         mock_run.assert_called_once_with(
-            ['python', '-u', '-m', 'pog.pog', '--dump-manifest', 'my.mfn', '--decryption-keyfile=foo.decrypt'],
+            ['python', '-u', '-m', 'pog.pog', '--dump-manifest', 'my.mfn', '--decrypt=foo.decrypt'],
             env=env, stdout=PIPE,
         )
 
@@ -74,7 +70,7 @@ class PogCliTest(TestDirMixin, TestCase):
         env = dict(environ)
         env['PYTHONPATH'] = POG_ROOT
         mock_run.assert_called_once_with(
-            ['python', '-u', '-m', 'pog.pog', '--dump-manifest-index', 'my.mfn', '--encryption-keyfile=foo.encrypt'],
+            ['python', '-u', '-m', 'pog.pog', '--dump-manifest-index', 'my.mfn', '--encrypt=foo.encrypt'],
             env=env, stdout=PIPE,
         )
 
@@ -98,7 +94,7 @@ class PogCliTest(TestDirMixin, TestCase):
         env = dict(environ)
         env['PYTHONPATH'] = POG_ROOT
         mock_run.assert_called_once_with(
-            ['python', '-u', '-m', 'pog.pog', '--decrypt', 'my.mfn', '--decryption-keyfile=foo.decrypt'],
+            ['python', '-u', '-m', 'pog.pog', 'my.mfn', '--decrypt=foo.decrypt'],
             env=env, stdout=PIPE,
         )
 
@@ -125,5 +121,5 @@ class PogCliTest(TestDirMixin, TestCase):
         env['PYTHONPATH'] = POG_ROOT
         mock_run.assert_called_once_with(
             ['python', '-u', '-m', 'pog.pog', '--save-to=b2://bucket,s3:bucket', 'foo.txt', 'bar.txt',
-             '--encryption-keyfile=foo.encrypt'], env=env, stdout=PIPE,
+             '--encrypt=foo.encrypt'], env=env, stdout=PIPE,
         )

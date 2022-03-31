@@ -16,28 +16,24 @@ class PogCli():
         self._abort = True
 
     def set_keyfiles(self, *keyfiles):
-        for k in ('keyfile', 'decryption-keyfile', 'encryption-keyfile'):
+        for k in ('decrypt', 'encrypt'):
             self.config.pop(k, None)
 
         for f in keyfiles:
             if f.endswith('.decrypt'):
-                self.config['decryption-keyfile'] = f
+                self.config['decrypt'] = f
 
         for f in keyfiles:
             if f.endswith('.encrypt'):
-                self.config['encryption-keyfile'] = f
+                self.config['encrypt'] = f
 
-        for k in ('decryption-keyfile', 'encryption-keyfile'):
+        for k in ('decrypt', 'encrypt'):
             if k in self.config:
                 return
 
-        for f in keyfiles:
-            self.config['keyfile'] = f
-            return
-
     def run(self, *args, **kwargs):
         self._abort = False
-        restrict_config = kwargs.pop('restrict_config', ['encryption-keyfile'])
+        restrict_config = kwargs.pop('restrict_config', ['encrypt'])
         full_args = list(self.cmd) + list(args) + self._flatten_config(restrict_config)
         kwargs = {**self.kwargs, **kwargs}
 
@@ -79,8 +75,9 @@ class PogCli():
         return dict(info)
 
     def dumpManifestIndex(self, mfn):
+        # if not encrypt, fail?
         kwargs = {}
-        if 'decryption-keyfile' not in self.config and 'encryption-keyfile' in self.config:
+        if 'decrypt' not in self.config and 'encrypt' in self.config:
             kwargs['restrict_config'] = []
         yield from self.run('--dump-manifest-index', mfn, **kwargs)
 
@@ -92,13 +89,13 @@ class PogCli():
         return {'current': int(current), 'total': int(total), 'filename': filename.strip()}
 
     def decrypt(self, mfn, **kwargs):
-        for line in self.run('--decrypt', mfn, **kwargs):
+        for line in self.run(mfn, **kwargs):
             progress = self._progress_from_line(line)
             if progress:
                 yield progress
 
     def encrypt(self, inputs, destinations, **kwargs):
-        kwargs['restrict_config'] = ['decryption-keyfile']
+        kwargs['restrict_config'] = ['decrypt']
         save_to = '--save-to=' + ','.join(destinations)
         for line in self.run(save_to, *inputs, **kwargs):
             progress = self._progress_from_line(line)
