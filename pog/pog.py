@@ -24,7 +24,7 @@ Options:
   --version                        Show version.
   -l --label=<backup>              The prefix/label for the backup manifest file.
   --chunk-size=<bytes>             When encrypting, split large files into <chunkMB> size parts [default: 100MB].
-  --compresslevel=<1-22>           Zstd compression level. [default: 3]
+  --compresslevel=<1-22>           Zstd compression level. [default: 6]
   --concurrency=<1-N>              How many threads to use for uploads. [default: 8]
   --consume                        Used with decrypt -- after decrypting a blob, delete it from disk to conserve space.
   --decrypt=<filename>             Decryption -- <filename> contains the (binary) private key.
@@ -33,6 +33,7 @@ Options:
   --save-to=<b2|s3|/script.sh|...> During encryption, where to save encrypted data. Can be a cloud service (s3, b2), or the
                                    path to a script to run with (<encrypted file name>, <temp file path>).
 """
+import hmac
 import sys
 from base64 import urlsafe_b64encode
 from collections import ChainMap
@@ -56,7 +57,6 @@ from pog.lib.local_file_list import local_file_list
 from pog.lib.secret import pass_to_hash
 
 
-KEY_SIZE = 32  # 256 bits
 MANIFEST_INDEX_BYTES = 4  # up to 4GB
 
 
@@ -90,18 +90,14 @@ def _decompress(bites):
 
 
 def _box_overhead(box):
-    if isinstance(box, nacl_SecretBox):
-        overhead = box.NONCE_SIZE + box.MACBYTES
+    if box == nacl_SecretBox or isinstance(box, nacl_SecretBox):
+        overhead = nacl_SecretBox.NONCE_SIZE + nacl_SecretBox.MACBYTES
     else:  # nacl_SealedBox
         overhead = 48
     return overhead
 
 
-def _header_size(box):
-    return KEY_SIZE + _box_overhead(box)
-
-
-def get_asymmetric_encryption(decryption_keyfile=None, encryption_keyfile=None):
+def prepare_crypto_box(password, decryption_keyfile=None, encryption_keyfile=None):
     secret = None
     box = None
 
@@ -114,26 +110,23 @@ def get_asymmetric_encryption(decryption_keyfile=None, encryption_keyfile=None):
         with open(decryption_keyfile, 'rb') as f:
             dont_share_this_secret = f.read()
         private_key = PrivateKey(dont_share_this_secret)
-        secret = bytes(private_key.public_key)
         box = nacl_SealedBox(private_key)
 
     return secret, box
 
 
 def blobname(content, secret):
-    content_hash = sha256(content).digest()
-
-    # could use hmac here... not sure?
-    return urlsafe_b64encode(sha256(secret + content_hash).digest())
+    content_hash = hmac.digest(secret, content, hashlib.sha256)
+    return urlsafe_b64encode(content_hash)
 
 
 def _print_progress(count, total, filename):
     print('*** {}/{}: {}'.format(count, total, filename))
 
 
-def get_secret():
+def get_password():
     # if env is set, return env?
-    password = getenv('POG_SECRET')
+    password = getenv('POG_PASSWORD')
     if password:
         return pass_to_hash(password)
 
@@ -149,11 +142,11 @@ def get_secret():
 
 
 class Encryptor():
-    def __init__(self, secret, crypto_box=None, chunk_size=100000000, compresslevel=3, concurrency=8,
+    def __init__(self, secret, crypto_box, chunk_size=100000000, compresslevel=6, concurrency=8,
                  store_absolute_paths=False, blob_store=None):
         self.secret = sha256(secret).digest()
         self.index_box = nacl_SecretBox(secret)
-        self.box = crypto_box or self.index_box
+        self.box = crypto_box
         self.chunk_size = chunk_size
         self.compresslevel = compresslevel
         self.concurrency = concurrency
@@ -192,33 +185,10 @@ class Encryptor():
         # otherwise, relative path
         return filename
 
-    def _write_header(self, f):
-        file_key = nacl_random(KEY_SIZE)
-        header = self.box.encrypt(file_key)
-        assert len(header) == _header_size(self.box)
-        f.write(header)
-
-        file_box = nacl_SecretBox(file_key)
-        return file_box
-
-    def _write_index_header(self, f, data_length):
-        payload_length = (data_length + _box_overhead(self.index_box)).to_bytes(MANIFEST_INDEX_BYTES, byteorder='big')
-
-        file_key = nacl_random(KEY_SIZE)
-        header = self.index_box.encrypt(payload_length + file_key)
-        assert len(header) == _header_size(self.index_box) + MANIFEST_INDEX_BYTES
-        f.write(header)
-
-        file_box = nacl_SecretBox(file_key)
-        return file_box
-
-    def _write(self, f, data, manifest_index=False):
+    def _write(self, f, data, box=None):
+        box = box or self.box
         data = self._pad_data(data)
-        if manifest_index:
-            file_box = self._write_index_header(f, len(data))
-        else:
-            file_box = self._write_header(f)
-        f.write(file_box.encrypt(data))
+        f.write(self.box.encrypt(data))
 
     def _mfn_get_all_blobs(self, mfn):
         for og_filename, info in mfn.items():
@@ -231,14 +201,19 @@ class Encryptor():
         with TemporaryDirectory(dir=_get_temp_dir()) as tempdir:
             temp_path = path.join(tempdir, filename)
             with open(temp_path, 'wb') as f:
-                # store mfn index if needed
-                if self.box != self.index_box:
-                    all_blobs = sorted(list(self._mfn_get_all_blobs(mfn)))
-                    index_bytes = dumps(all_blobs).encode('utf-8')
-                    self._write(f, _compress(index_bytes, self.compresslevel), manifest_index=True)
+                # calculate mfn index
+                all_blobs = sorted(list(self._mfn_get_all_blobs(mfn)))
+                index_bytes = dumps(all_blobs).encode('utf-8')
+                index_bytes = _compress(index_bytes, self.compresslevel)
 
+                # write header, then index
+                Manifest(self.box).write_header(f, self.index_box, len(index_bytes))
+                self._write(f, index_bytes, box=self.index_box)
+
+                # then mfn data
                 full_manifest_bytes = dumps(mfn).encode('utf-8')
                 self._write(f, _compress(full_manifest_bytes, self.compresslevel))
+
             self.blob_store.save(filename, temp_path)
         return filename
 
@@ -289,74 +264,112 @@ class Encryptor():
         _print_progress(len(all_inputs)+1, len(all_inputs)+1, mfn_filename)
 
 
-class Decryptor():
-    def __init__(self, secret=None, crypto_box=None, consume=False):
-        self.index_box = nacl_SecretBox(secret)
-        self.box = crypto_box or self.index_box
-        self.consume = consume
+class Manifest():
+    HEADER_SIZE = _box_overhead(nacl_SealedBox) + MANIFEST_INDEX_BYTES
 
-    def _read_index_header(self, f):
-        header_ciphertext = f.read(_header_size(self.index_box) + MANIFEST_INDEX_BYTES)
-        header_bytes = self.index_box.decrypt(header_ciphertext)
-        assert len(header_bytes) == KEY_SIZE + MANIFEST_INDEX_BYTES
-        payload_length = int.from_bytes(header_bytes[:MANIFEST_INDEX_BYTES], 'big')
-        file_key = header_bytes[MANIFEST_INDEX_BYTES:]
-        return payload_length, nacl_SecretBox(file_key)
+    def __init__(self, crypto_box):
+        self.box = crypto_box
 
-    def load_manifest_index(self, filename):
-        with open(filename, 'rb') as f:
-            payload_len, file_box = self._read_index_header(f)
-            data = f.read(payload_len)
-            json_bytes = _decompress(file_box.decrypt(data))
-            return loads(json_bytes.decode('utf-8'))
+    # BIG WIP
+    def write_header(self, f, index_box, compressed_index_length):
+        # index header
+        payload_length = (compressed_index_length + _box_overhead(index_box)).to_bytes(MANIFEST_INDEX_BYTES, byteorder='big')
+        index_header = index_box.encrypt(payload_length)
+        assert len(index_header) == _box_overhead(self.index_box) + MANIFEST_INDEX_BYTES
+
+        # manifest header
+        pad_length = len(index_header) + _box_overhead(index_box)  # full index length
+        pad_length = pad_length.to_bytes(MANIFEST_INDEX_BYTES, byteorder='big')
+        manifest_header = self.box.encrypt()
+
+        # write both. Order will be:
+        # manifest header, index header, index, manifest
+        f.write(manifest_header)
+        f.write(index_header)
+
+    def _mfn_get_all_blobs(self, mfn):
+        for og_filename, info in mfn.items():
+            yield from info['blobs']
 
     def _read_header(self, f):
-        header_bytes = f.read(_header_size(self.box))
+        header_bytes = f.read(self.HEADER_SIZE)
         file_key = self.box.decrypt(header_bytes)
-        assert len(file_key) == KEY_SIZE
-        return nacl_SecretBox(file_key)
+        assert len(file_key) == MANIFEST_INDEX_BYTES
+        pad_length = int.from_bytes(header_bytes, 'big')
+        return pad_length
 
-    def load_manifest(self, filename):
+    def load(self, filename):
         with open(filename, 'rb') as f:
-            if self.box != self.index_box:
-                # toss the manifest index -- we don't need it
-                index_header_len, _ = self._read_index_header(f)
-                f.read(index_header_len)
+            # read header
+            pad_length = self._read_header(f)
+
+            # discard manifest index
+            f.read(pad_length)
 
             # read the full manifest
-            file_box = self._read_header(f)
             data = f.read()
-            json_bytes = _decompress(file_box.decrypt(data))
+            json_bytes = _decompress(self.box.decrypt(data))
             return loads(json_bytes.decode('utf-8'))
 
-    def decrypt_single_blob(self, filename, out):
+    def show(self, *inputs, show_filenames=True):
+        for filename in download_list(inputs):
+            print('*** {}:'.format(filename), file=sys.stderr)
+            mfn = self.load(filename)
+            for og_filename, info in mfn.items():
+                if show_filenames:
+                    print('* {}:'.format(og_filename))
+                for blob in info['blobs']:
+                    print(blob)
+
+
+class ManifestIndex():
+    HEADER_SIZE = _box_overhead(nacl_SecretBox) + MANIFEST_INDEX_BYTES
+
+    def __init__(self, secret=None):
+        self.index_box = nacl_SecretBox(secret)
+
+    def _read_index_header(self, f):
+        header_ciphertext = f.read(self.HEADER_SIZE)
+        header_bytes = self.index_box.decrypt(header_ciphertext)
+        assert len(header_bytes) == MANIFEST_INDEX_BYTES
+        payload_length = int.from_bytes(header_bytes, 'big')
+        return payload_length
+
+    def load(self, filename):
         with open(filename, 'rb') as f:
-            blob_box = self._read_header(f)
-            data = f.read()
-            out.write(blob_box.decrypt(data))  # `out` handles decompression
-        if self.consume:
-            remove(filename)
+            # skip first header
+            f.read(ManifestReader.HEADER_SIZE)
+            # then read the real deal
+            payload_len = self._read_index_header(f)
+            data = f.read(payload_len)
+            json_bytes = _decompress(self.index_box.decrypt(data))
+            return loads(json_bytes.decode('utf-8'))
 
-    def dump_manifest_index(self, *inputs):
-        if self.box == self.index_box:
-            self.dump_manifest(*inputs, show_filenames=False)
-            return
-
+    def show(self, *inputs):
         for filename in download_list(inputs):
             print('*** {}:'.format(filename), file=sys.stderr)
             mfn_index = self.load_manifest_index(filename)
             for blob in mfn_index:
                 print(blob)
 
+
+class Decryptor():
+    def __init__(self, crypto_box, consume=False):
+        self.box = crypto_box
+        self.consume = consume
+
+    def load_manifest(self, filename):
+        return ManifestReader(self.box).load(filename)
+
+    def decrypt_single_blob(self, filename, out):
+        with open(filename, 'rb') as f:
+            data = f.read()
+            out.write(self.box.decrypt(data))  # `out` handles decompression
+        if self.consume:
+            remove(filename)
+
     def dump_manifest(self, *inputs, show_filenames=True):
-        for filename in download_list(inputs):
-            print('*** {}:'.format(filename), file=sys.stderr)
-            mfn = self.load_manifest(filename)
-            for og_filename, info in mfn.items():
-                if show_filenames:
-                    print('* {}:'.format(og_filename))
-                for blob in info['blobs']:
-                    print(blob)
+        ManifestReader(self.box).show(*inputs, show_filenames=show_filenames)
 
     def decrypt(self, *inputs):
         for filename, fs_info, partials in download_list(inputs, extract=True):
@@ -390,9 +403,9 @@ def main():
     concurrency = int(args.get('--concurrency'))
     store_absolute_paths = args.get('--store-absolute-paths')
 
-    secret, crypto_box = get_asymmetric_encryption(args.get('--decrypt'), args.get('--encrypt'))
-    if not crypto_box and not secret:
-        secret = get_secret(args.get('--keyfile'))
+    password = None
+    #password = get_password()  # not yet
+    secret, crypto_box = prepare_crypto_box(password, args.get('--decrypt'), args.get('--encrypt'))
 
     decrypt = (
         args.get('--dump-manifest') or
@@ -408,6 +421,7 @@ def main():
             d.dump_manifest_index(*args['<INPUTS>'])
         else:
             d.decrypt(*args['<INPUTS>'])
+
     else:
         backup_label = args.get('--label')
         mfn_filename = None if not backup_label else '{}-{}.mfn'.format(backup_label, datetime.now().isoformat())
