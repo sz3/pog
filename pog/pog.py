@@ -39,7 +39,6 @@ from base64 import urlsafe_b64encode
 from collections import ChainMap
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
-from getpass import getpass
 from hashlib import sha256
 from json import dumps, loads
 from os import fdopen, makedirs, remove, utime, path, getenv
@@ -54,7 +53,6 @@ from humanfriendly import parse_size
 
 from pog.lib.blob_store import BlobStore, download_list
 from pog.lib.local_file_list import local_file_list
-from pog.lib.secret import pass_to_hash
 
 
 MANIFEST_INDEX_BYTES = 4  # up to 4GB
@@ -97,7 +95,7 @@ def _box_overhead(box):
     return overhead
 
 
-def prepare_crypto_box(password, decryption_keyfile=None, encryption_keyfile=None):
+def prepare_crypto_box(decryption_keyfile=None, encryption_keyfile=None):
     secret = None
     box = None
 
@@ -123,23 +121,6 @@ def blobname(content, secret):
 
 def _print_progress(count, total, filename):
     print('*** {}/{}: {}'.format(count, total, filename))
-
-
-def get_password():
-    # if env is set, return env?
-    password = getenv('POG_PASSWORD')
-    if password:
-        return pass_to_hash(password)
-
-    # if keyfile failed, prompt for password
-    while True:
-        password = getpass()
-        pass2 = getpass()
-        if password != pass2:
-            print('passwords did not match! Please try again.', file=sys.stderr)
-            continue
-        break
-    return pass_to_hash(password)
 
 
 class Encryptor():
@@ -362,6 +343,7 @@ class Decryptor():
     def decrypt_single_blob(self, filename, out):
         with open(filename, 'rb') as f:
             data = f.read()
+            # two level decrypt?
             out.write(self.box.decrypt(data))  # `out` handles decompression
         if self.consume:
             remove(filename)
@@ -401,9 +383,7 @@ def main():
     concurrency = int(args.get('--concurrency'))
     store_absolute_paths = args.get('--store-absolute-paths')
 
-    password = None
-    #password = get_password()  # not yet
-    secret, crypto_box = prepare_crypto_box(password, args.get('--decrypt'), args.get('--encrypt'))
+    secret, crypto_box = prepare_crypto_box(args.get('--decrypt'), args.get('--encrypt'))
 
     decrypt = (
         args.get('--dump-manifest') or
