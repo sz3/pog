@@ -115,7 +115,7 @@ def prepare_crypto_box(decryption_keyfile=None, encryption_keyfile=None):
 
 
 def blobname(content, secret):
-    content_hash = hmac.digest(secret, content, sha256)
+    content_hash = hmac.new(secret, content, sha256).digest()
     return urlsafe_b64encode(content_hash)
 
 
