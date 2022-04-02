@@ -1,7 +1,7 @@
-argon2-cffi
 b2sdk
 boto3
 docopt
 humanfriendly
+mcleece
 pynacl
 zstandard
