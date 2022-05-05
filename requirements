@@ -1,5 +1,6 @@
 b2sdk
 boto3
+coverage
 docopt
 humanfriendly
 mcleece
