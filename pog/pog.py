@@ -4,10 +4,10 @@
 (the G is silent)
 
 Usage:
-  pog --encrypt=<filename> [--save-to=<b2|s3|script.sh|...>] [--chunk-size=<bytes>]
+  pog --encrypt=<keyfile> [--save-to=<b2|s3|script.sh|...>] [--chunk-size=<bytes>]
       [--compresslevel=<1-22>] [--concurrency=<1-N>] [--store-absolute-paths] [--label=<backup>] <INPUTS>...
-  pog --decrypt=<filename> [--dump-manifest] [--consume] <INPUTS>...
-  pog --encrypt=<filename> --dump-manifest-index <INPUTS>...
+  pog --decrypt=<secretfile> [--dump-manifest] [--consume] <INPUTS>...
+  pog --encrypt=<keyfile> --dump-manifest-index <INPUTS>...
   pog (-h | --help)
 
 Examples:
@@ -27,8 +27,8 @@ Options:
   --compresslevel=<1-22>           Zstd compression level. [default: 6]
   --concurrency=<1-N>              How many threads to use for uploads. [default: 8]
   --consume                        Used with decrypt -- after decrypting a blob, delete it from disk to conserve space.
-  --decrypt=<filename>             Decryption -- <filename> contains the (binary) private key.
-  --encrypt=<filename>             Encryption -- <filename> contains the (binary) public key.
+  --decrypt=<secretfile>           Decryption -- <secretfile> contains the (binary) secret key.
+  --encrypt=<keyfile>              Encryption -- <keyfile> contains the (binary) "public" key.
   --store-absolute-paths           Store files under their absolute paths (i.e. for backups)
   --save-to=<b2|s3|/script.sh|...> During encryption, where to save encrypted data. Can be a cloud service (s3, b2), or the
                                    path to a script to run with (<encrypted file name>, <temp file path>).
@@ -41,7 +41,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from hashlib import sha256
 from json import dumps, loads
-from os import fdopen, makedirs, remove, utime, path, getenv
+from os import fdopen, makedirs, remove, utime, path
 from tempfile import TemporaryDirectory, gettempdir
 
 import zstandard as zstd
