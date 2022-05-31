@@ -6,12 +6,16 @@
 ## Pretty Ok Gncryption
 
 * File encryption and backups!
-* Uses `nacl.SecretBox` and `zstandard`!
+* Uses [`libmcleece`](https://github.com/sz3/pymcleece) (a variation of `libsodium`'s `crypto_sealedbox`) and `zstandard`!
 * Chunks up large files!
-* Can be used to generate encrypted archives locally, or as a backup tool that pushes to cloud storage providers. (`s3`, `b2`, ...tbd)
+* Can be used to generate encrypted archives (or backups) to a local directory -- including a shared mount, or to push directly to a few cloud storage providers. (`s3`, `b2`, ...tbd)
 * There is a GUI: [pogui](https://github.com/sz3/pogui).
 
-This tool is built around symmetric encryption -- specifically libsodium's `crypto_secretbox`, which is `XSalsa20+Poly1305`. Doing asymmetric PGP-like things is not in the cards -- but there is an experimental use case using asymmetric crypto that will likely be supported.
+Pog is a tool for paranoid, incremental backups. We might have 200 files today, 210 tomorrow, and 220 the next day (but some may be deleted!).
+
+This tool is built around asymmetric encryption -- to use it, we first generate a public+private keypair. The idea is that we will use our "public" key for automated backups -- though we still don't really want to advertise it! Our private (or "secret") key will be kept somewhere safe, and only used when we need to restore our backup.
+
+From a technical standpoint, the construct used is libmcleece's `mcleece_crypto_box_seal`, which is the post-quantum `Classic McEliece` + `x25519` for generating a per-file shared secret, and `xsalsa20poly1305` (encrypting the data using the secret).
 
 * Still in beta!
 * Don't rely on this to keep your government leaks secret!
@@ -32,35 +36,30 @@ python setup.py install
 ## Usage
 
 ### Credentials
-* Pog does not manage cloud storage credentials -- it asks that you configure your environment with API keys before use.
+* Pog does not manage cloud storage credentials -- it asks that we configure our environment with API keys before use.
 	* To validate s3 credentials:
 		* `awscli ls <bucket_name>`
 	* To validate b2 credentials:
 		* `b2 ls <bucket_name>`
 
-### Using a password or keyfiles
-1. symmetric keyfile
-	* any file can be used as a keyfile.
-	* the contents of the keyfile will be hashed, and that hash will become the cryptographic key
-	* cryptographic randomness (ex: 1024 bytes from /dev/urandom) is recommended
-2. asymmetric keyfiles
-	* the `pog-create-keypair` script will generate an "encrypt" and "decrypt" keypair.
-	* encrypt is used for creating archives
-	* decrypt is used for extracting them
-3. Password entry
-	* if no keyfiles are specified, Pog supports password entry for creating or reading archives
+### Generating a keypair
+```
+pog-create-keypair
+```
+* *.encrypt is used for creating archives.
+* *.decrypt is used for extracting them (and should be kept somewhere safe)
 
 ### Creating cloud archives and backups
 
 * Consider an S3 backup:
 
 ```
-pog /home/user/my_file.txt --keyfile=/home/user/secret.keyfile --save-to=s3://my-bucket --store-absolute-paths
+pog /home/user/my_file.txt --encrypt=/home/user/secret.encrypt --save-to=s3://my-bucket --store-absolute-paths
 ```
 
 This does a few things:
-1. `my_file.txt` is encrypted with `secret.keyfile`. If the file is sufficiently large, it is split into multiple pieces during encryption.
-2. The encrypted contents ("blob") of `my_file.txt` is saved to the s3 bucket `my-bucket`, under the top-level `data/` subdirectory.
+1. `my_file.txt` is encrypted with `secret.encrypt`. If the file is sufficiently large, it is split into multiple chunks during encryption.
+2. The encrypted contents ("blob") of `my_file.txt` are saved to the s3 bucket `my-bucket`, under the top-level `data/` subdirectory.
 3. An encrypted "manifest" file is created, named according to the time the archive was created. This manifest file acts as an index from filenames (`/home/user/my_file`) to one or more encrypted blobs.
    a. The `--store-absolute-paths` flag tells the manifest to resolve ambiguous paths with the absolute path (`/home/user/my_file`) instead of the relative path (`my_file`). This can be useful to have when extracting archives or backups.
 4. The manifest file is also saved to `my-bucket` in s3.
@@ -70,10 +69,10 @@ This does a few things:
 * Here is another example, with a series of directories:
 
 ```
-pog /opt/games /opt/apps /opt/music --encryption-keyfile=secret.encrypt --save-to=s3://my-bucket,b2://my-b2-bucket
+pog /opt/games /opt/apps /opt/music --encrypt=secret.encrypt --save-to=s3://my-bucket,b2://my-b2-bucket
 ```
 
-* This will recursively go through those 3 directories, gathering up all files and saving the encrypted blobs to both s3 and b2.
+* This will recursively go through those 3 directories, gathering up all files and saving the encrypted data to both s3 and b2.
 
 The command line help (`pog -h`) shows other useful examples.
 
@@ -82,13 +81,13 @@ The command line help (`pog -h`) shows other useful examples.
 * It is also possible to use Pog to encrypt a single file.
 
 ```
-pog /home/myfile.original > outputs.txt
+pog --encrypt=secret.encrypt /home/myfile.original > outputs.txt
 ```
 
 * and to decrypt:
 
 ```
-pog --decrypt $(cat outputs.txt) > myfile.copy
+pog --decrypt=secret.decrypt $(cat outputs.txt) > myfile.copy
 ```
 
 ### Reading archives and backups
@@ -96,33 +95,22 @@ pog --decrypt $(cat outputs.txt) > myfile.copy
 For a given manifest file (`2020-01-23T12:34:56.012345.mfn`), we can download and extract the archive like so:
 
 ```
-pog --decrypt s3:/my-bucket/2020-01-23T12:34:56.012345.mfn --keyfile=/home/user/secret.keyfile
+pog --decrypt=secret.decrypt s3:/my-bucket/2020-01-23T12:34:56.012345.mfn
 ```
 
-* The `--decrypt` flag should be specified for read+decrypt -- the default behavior is to write+encrypt.
-* If a `--decryption-keyfile` is provided, `--decrypt` is assumed.
 * If a local manifest file is provided, it is assumed that the data blobs are already downloaded into the working directory.
 
 ## Algorithm
 
 * files are compressed with `zstandard`, and split ("chunked") into blobs. The default chunk size is 50MB.
 
-* blob contents are encrypted with `crypto_secretbox`. The key is 256 bits, independent *per-blob*, and stored in the blob header.
-
-* the blob header is encrypted in one of 3 ways:
-	* `crypto_secretbox` with key=sha256(argon2.ID with `time_cost=8, memory_cost=102400, parallelism=8, hash_len=32`)
-		* this is what is used when you get a password prompt
-	* `crypto_secretbox` with key=sha256(keyfile contents)
-		* this is what the `--keyfile` option does
-	* `crypto_sealedbox` with an X25519 key pair
-		* this is what `--decryption-keyfile` and `--encryption-keyfile` do
-		* an X25519 key pair can be generated with `pog-create-keypair`.
+* blob contents are encrypted with `mcleece_crypto_box_seal`. This is a variation of `crypto_sealedbox` -- an asymmetric key exchange is used to generate an encrypted 256 bits key *per-blob*, which is stored in the blob header.
 
 * the file->blob relationship is stored in an encrypted manifest file (`.mfn`), which also stores file metadata -- e.g. last modified time.
 	* the `.mfn` can be thought of as the dictionary for the archive.
 	* blobs *can* be decrypted without the manifest, *IF* the blob order is correct. However, only the file contents are stored in the blobs. The original file name and file metadata will not survive the trip.
 
-* blobs are named by urlsafe base64(sha256(sha256(secret) + sha256(content)). The "secret" is derived from the encryption key.
+* blobs are named by urlsafe base64(hmac(sha256(secret), content)). The "secret" is derived from the encryption (public) key.
 	* the goal is to pseudo-randomize the names of the blobs, while still keeping them consistent for backups run with the same key.
 	* we want to "leak" the content hash only to the extent it's necessary to save work on successive backups (e.g. "I don't need to reupload blob X, it already exists")
 	* because we use the content hash for this purpose, we can achieve some amount of file de-duplication.
