@@ -103,6 +103,38 @@ class MainTest(TestDirMixin, TestCase):
         self.assertEqual(path.getmtime(tiny_sample), SAMPLE_TIME1)
         self.assertEqual(path.getmtime(another_sample), SAMPLE_TIME2)
 
+    def test_round_trip_localfs(self):
+        # encrypt our sample files
+        save_to = f'--save-to=local:{self.working_dir.name}/'
+        enc = self.run_command(self.encryption_flag, self.tiny_sample, self.another_sample, CONCURRENCY_FLAG, save_to)
+        manifest_name = glob(path.join(self.working_dir.name, '*.mfn'))[0]
+
+        # ordered lexicographically by filename
+        self.assertEqual(enc, [
+            f'*** 1/3: {self.another_sample}',
+            self.another_sample_blobname,
+            f'*** 2/3: {self.tiny_sample}',
+            self.tiny_sample_blobname,
+            '*** 3/3: {}'.format(path.basename(manifest_name)),
+        ])
+        blobs = [l for l in enc if not l.startswith('***')]
+
+        # check that the manifest looks good
+        show_mfn = self.run_command(self.decryption_flag, '--dump-manifest', manifest_name)
+        self.assertEqual(
+            show_mfn, ['* another_sample.txt:', blobs[0], '* tiny_sample.txt:', blobs[1]]
+        )
+
+        # decrypt, consuming our encrypted inputs
+        dec = self.run_command(self.decryption_flag, '--consume', manifest_name)
+        self.assertEqual(dec, ['*** 1/2: another_sample.txt', '*** 2/2: tiny_sample.txt'])
+
+        # read the decrypted files
+        tiny_sample = path.join(self.working_dir.name, 'tiny_sample.txt')
+        with open(tiny_sample) as f:
+            contents = f.read()
+        self.assertEqual(contents, 'aaaabbbb')
+
     def test_label_manifest(self):
         # encrypt our sample files
         backup_name = '--label=back1'
