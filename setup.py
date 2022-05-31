@@ -10,7 +10,7 @@ setup(
     name='pogcli',
     license='MIT',
     url='https://github.com/sz3/pog',
-    version='0.1.4',
+    version='0.2.0',
 
     entry_points={
         'console_scripts': [
@@ -42,7 +42,7 @@ setup(
     long_description_content_type='text/markdown',
 
     author="Stephen Zimmerman",
-    author_email="sz@galacticicecube.com",
+    author_email="sz@recv.cc",
 
     classifiers=[
         "License :: OSI Approved :: MIT License",

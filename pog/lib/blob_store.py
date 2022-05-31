@@ -69,6 +69,14 @@ class download_list():
             filenames.remove(f)
         return filenames, dict(partials)
 
+    def _find_local(self, filename):
+        # check in a few places
+        for fn in [filename, _data_path(filename)]:
+            if path.exists(fn):
+                return fn
+        # give up
+        return filename
+
     def __iter__(self):
         self.it = iter(self.filenames)
         self.tempfile = None
@@ -92,12 +100,12 @@ class download_list():
         target = target or parsed.scheme
         bucket = bucket or parsed.netloc
         if not target:  # just a filename
-            return filename, None, []
+            return self._find_local(filename), None, []
 
         try:
             fs = get_cloud_fs(target)(bucket)
-        except TypeError:  # not a real fs, treat it as a filename
-            return filename, None, []
+        except TypeError:  # not a real fs, treat it as a local filename
+            return self._find_local(filename), None, []
 
         is_mfn = filename.endswith('.mfn')
         suffix = '.mfn' if is_mfn else ''
