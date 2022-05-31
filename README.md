@@ -15,7 +15,7 @@ Pog is a tool for paranoid, incremental backups. We might have 200 files today, 
 
 This tool is built around asymmetric encryption -- to use it, we first generate a public+private keypair. The idea is that we will use our "public" key for automated backups -- though we still don't really want to advertise it! Our private (or "secret") key will be kept somewhere safe, and only used when we need to restore our backup.
 
-From a technical standpoint, the construct used is libmcleece's `mcleece_crypto_box_seal`, which is the post-quantum `Classic McEliece` + `x25519` for generating a per-file shared secret, and `xsalsa20poly1305` (encrypting the data using the secret).
+From a technical standpoint, the construct used is libmcleece's `mcleece_crypto_box_seal`, which is the post-quantum `Classic McEliece` + `x25519` + `xsalsa20poly1305` for encoding a per-file secret, and `crypto_secretbox` (encrypting the data using the secret).
 
 * Still in beta!
 * Don't rely on this to keep your government leaks secret!
@@ -104,7 +104,7 @@ pog --decrypt=secret.decrypt s3:/my-bucket/2020-01-23T12:34:56.012345.mfn
 
 * files are compressed with `zstandard`, and split ("chunked") into blobs. The default chunk size is 50MB.
 
-* blob contents are encrypted with `mcleece_crypto_box_seal`. This is a variation of `crypto_sealedbox` -- an asymmetric key exchange is used to generate an encrypted 256 bits key *per-blob*, which is stored in the blob header.
+* blob contents are encrypted with `mcleece_crypto_box_seal`. This is a variation of `crypto_sealedbox` -- an asymmetric key exchange is used to encrypt a random 256 bit key *per-blob*. That random key is used to encrypt the data.
 
 * the file->blob relationship is stored in an encrypted manifest file (`.mfn`), which also stores file metadata -- e.g. last modified time.
 	* the `.mfn` can be thought of as the dictionary for the archive.
