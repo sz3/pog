@@ -1,5 +1,8 @@
+import sys
+
+from os import environ
 from types import SimpleNamespace
-from unittest import TestCase
+from unittest import TestCase, skipIf
 from unittest.mock import patch, MagicMock
 
 from b2sdk.exception import FileNotPresent
@@ -44,6 +47,11 @@ pog.py
 '''
 
 
+def _py36_or_lower():
+    return sys.version_info.major <= 3 and sys.version_info.minor <= 6
+
+
+@skipIf(_py36_or_lower(), 'skip test for <= py3.6')
 @patch('pog.fs.b2fs.B2Api.get_bucket_by_name', autoSpec=True)
 class b2fsTest(TestCase):
     def setUp(self):
