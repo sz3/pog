@@ -7,6 +7,7 @@ from .pogfs import Pogfs
 
 
 BUCKET_NAME = environ.get('S3_BUCKET_NAME')
+_ = boto3.client('s3')
 
 
 class s3fs(Pogfs):
@@ -14,11 +15,11 @@ class s3fs(Pogfs):
         self.bucket_name = bucket_name or BUCKET_NAME
 
     def exists(self, remote_path):
-        resource_s3 = boto3.resource('s3')
+        s3 = boto3.client('s3')
         try:
-            os = resource_s3.ObjectSummary(self.bucket_name, remote_path)
+            os = s3.head_object(Bucket=self.bucket_name, Key=remote_path)
             # .last_modifed for date...
-            return os.last_modified
+            return os["LastModified"]
         except ClientError as e:
             if e.response['Error']['Code'] == "404":
                 return False
