@@ -41,7 +41,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from hashlib import sha256
 from json import dumps, loads
-from os import fdopen, makedirs, remove, utime, path
+from os import environ, fdopen, makedirs, remove, utime, path
 from tempfile import TemporaryDirectory, gettempdir
 
 import zstandard as zstd
@@ -56,6 +56,12 @@ from pog.lib.local_file_list import local_file_list
 
 
 MANIFEST_INDEX_BYTES = 4  # up to 4GB
+
+
+# use "password" (key) as salt for hmac of secret???
+# it's gotta come from somewhere, and it's an extra layer of defense...
+# NOTE!: if you lose your password, you can still decrypt if you have the secret key!
+# It's just that deduplication (and checking manifest idx w/ "public" key) will fail...
 
 
 stdoutfd = None
@@ -88,6 +94,7 @@ def _decompress(bites):
 
 
 def _box_overhead(box):
+    # TODO: update this to support nacl_SealedBox again...
     if box == nacl_SecretBox or isinstance(box, nacl_SecretBox):
         overhead = nacl_SecretBox.NONCE_SIZE + nacl_SecretBox.MACBYTES
     else:  # mcleece_SealedBox
@@ -95,21 +102,24 @@ def _box_overhead(box):
     return overhead
 
 
-def prepare_crypto_box(decryption_keyfile=None, encryption_keyfile=None):
+def prepare_crypto_box(decryption_keyfile=None, encryption_keyfile=None, passphrase=None):
     secret = None
     box = None
 
-    if encryption_keyfile:
+    if encryption_keyfile and passphrase:
         with open(encryption_keyfile, 'rb') as f:
             secret = f.read()
         box = mcleece_SealedBox(PublicKey(secret))
-        secret = sha256(secret).digest()
+        secret = hmac.new(passphrase, secret, sha256).digest()
 
-    if decryption_keyfile:
+    elif decryption_keyfile:
         with open(decryption_keyfile, 'rb') as f:
             dont_share_this_secret = f.read()
         private_key = PrivateKey(dont_share_this_secret)
         box = mcleece_SealedBox(private_key)
+
+    else:
+        raise Exception(f"prepare_crypto_box called without correct params...")
 
     return secret, box
 
@@ -126,7 +136,7 @@ def _print_progress(count, total, filename):
 class Encryptor():
     def __init__(self, secret, crypto_box, chunk_size=100000000, compresslevel=6, concurrency=8,
                  store_absolute_paths=False, blob_store=None):
-        self.secret = sha256(secret).digest()
+        self.secret = secret
         self.index_box = nacl_SecretBox(secret)
         self.box = crypto_box
         self.chunk_size = chunk_size
@@ -377,13 +387,15 @@ class Decryptor():
 
 
 def main():
-    args = docopt(__doc__, version='Pog 0.3.0a')
+    args = docopt(__doc__, version='Pog 0.3.1a')
     chunk_size = parse_size(args.get('--chunk-size'))
     compresslevel = int(args.get('--compresslevel'))
     concurrency = int(args.get('--concurrency'))
     store_absolute_paths = args.get('--store-absolute-paths')
 
-    secret, crypto_box = prepare_crypto_box(args.get('--decrypt'), args.get('--encrypt'))
+    # TODO: pull passphrase from stdin?
+    passphrase = environ.get('POG_PASSPHRASE', None)
+    secret, crypto_box = prepare_crypto_box(args.get('--decrypt'), args.get('--encrypt'), passphrase)
 
     decrypt = (
         args.get('--dump-manifest') or
