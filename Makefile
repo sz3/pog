@@ -12,7 +12,7 @@ clean:
 	rm -rf build/ dist/ *.egg *.egg-info/
 
 test:
-	SUBPROCESS_COVERAGE=1 coverage run -m unittest
+	SUBPROCESS_COVERAGE=1 POG_PASSPHRASE='hunter2' coverage run -m unittest
 	coverage combine --append /tmp
 	coverage report
 

@@ -44,12 +44,13 @@ def make_big_file(filename):
 class MainTest(TestDirMixin, TestCase):
     encryption_flag = f'--encrypt={POG_ROOT}/tests/samples/only_for_testing.encrypt'
     decryption_flag = f'--decrypt={POG_ROOT}/tests/samples/only_for_testing.decrypt'
+    passphrase = 'igkwDkdwKzQ4OEE00HNnYk'
 
-    tiny_sample_blobname = 'I71vGLBszQsl429bbklX-6ahwB1gY_PPV4qfinkB49E='
-    another_sample_blobname = 'u-rWXcJ2AAY6XE2CXRaDJjyGP4Lg6Gj-h8Hsm1FM2mE='
+    tiny_sample_blobname = 'KMnnWK4vhzkYq_IgKkY5IdTIRMOA5QgsBKt81md0Iz4='
+    another_sample_blobname = '75U1r8y0oPnjBy6x6JF9mCwF3uSotAd3hicvt15GJYg='
 
     consistency_mfn = 'asymmetric-sample.mfn'
-    consistency_blobname = 'rKRdyE8kWxM1s_0TriGb_igkwDkdwKzQ4OEE00HNnYk='
+    consistency_blobname = 'iJLSTgfMViGx4QOmQ3-ZAho_6ZGyjhc76Y2gMRz9QQU='
 
     def test_round_trip(self):
         # encrypt our sample files
@@ -159,6 +160,8 @@ class MainTest(TestDirMixin, TestCase):
         )
 
     def test_consistency(self):
+        # POG_PASSPHRASE="hunter2" python -m pog.pog --encrypt=tests/samples/only_for_testing.encrypt 8.txt
+
         # regression test for our header/encryption format -- try to decrypt a known file
         with open(path.join(self.working_dir.name, 'out.txt'), 'wb') as f:
             dec = self.run_command(
@@ -335,8 +338,8 @@ class BigFileTest(TestDirMixin, TestCase):
 
         self.assertEqual(enc, [
             f'*** 1/2: {self.big_sample}',
-            '8sHhqqK-83fcLEAhkw0AZGnefCBGBpy0mte6uegY_IY=',
-            'WwdV1vRzgFpFUThH6PrjSkfY61w6twTfix1D3QJzTvA=',
+            'Q6LGNgP4z64rllTgu1FKdFaqpqjj6FgJPMGuuVzGpHQ=',
+            'aIJnzlx2vlXSNm79G9UV3OW4XJYGJJImiQzE_9my7Dc=',
             '*** 2/2: {}'.format(path.basename(manifest_name)),
         ])
         blobs = [l for l in enc if not l.startswith('***')]
@@ -375,9 +378,9 @@ class BigFileTest(TestDirMixin, TestCase):
 
         self.assertEqual(enc, [
             f'*** 1/2: {self.big_sample}',
-            'go1cB-Asb709LlxrJM0GO7bj7Mg93LOCMeIbJYPUkFQ=',
-            'TnVW4OjBJiFFiI8AMrrqM1nuZnlqtCHZMRN8ICuEQOc=',
-            'WwdV1vRzgFpFUThH6PrjSkfY61w6twTfix1D3QJzTvA=',
+            '4Cjokkr-kJLkUQPE1c6Dx4mplSWYRDFI635q7YX-C4A=',
+            '5OtHTMzYmqMmcOTPmwOQ5lYRFN2asYLihl5ojmk_jR4=',
+            'aIJnzlx2vlXSNm79G9UV3OW4XJYGJJImiQzE_9my7Dc=',
             '*** 2/2: {}'.format(path.basename(manifest_name)),
         ])
         blobs = [l for l in enc if not l.startswith('***')]

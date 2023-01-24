@@ -395,6 +395,8 @@ def main():
 
     # TODO: pull passphrase from stdin?
     passphrase = environ.get('POG_PASSPHRASE', None)
+    if passphrase:
+        passphrase = passphrase.encode('utf-8')
     secret, crypto_box = prepare_crypto_box(args.get('--decrypt'), args.get('--encrypt'), passphrase)
 
     decrypt = (

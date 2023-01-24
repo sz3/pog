@@ -18,7 +18,7 @@ jobs:
           pip install -r requirements
           pip install --upgrade coveralls
       - name: Test with pytest
-        run: CI=1 DANGER=1 coverage run -m unittest
+        run: CI=1 DANGER=1 POG_PASSPHRASE="hunter2" coverage run -m unittest
       - name: merge coverage
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

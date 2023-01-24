@@ -10,7 +10,7 @@ class CloudCleanupTest(TestDirMixin, TestCase):
     keyfile_flag = f'--encrypt={POG_ROOT}/tests/samples/only_for_testing.encrypt'
 
     consistency_mfn = 'asymmetric-sample.mfn'
-    consistency_blobname = 'rKRdyE8kWxM1s_0TriGb_igkwDkdwKzQ4OEE00HNnYk='
+    consistency_blobname = 'iJLSTgfMViGx4QOmQ3-ZAho_6ZGyjhc76Y2gMRz9QQU='
 
     def setUp(self):
         super().setUp()
