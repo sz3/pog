@@ -6,7 +6,7 @@
 Usage:
   pog --encrypt=<keyfile> [--save-to=<b2|s3|script.sh|...>] [--chunk-size=<bytes>]
       [--compresslevel=<1-22>] [--concurrency=<1-N>] [--store-absolute-paths] [--label=<backup>] <INPUTS>...
-  pog --decrypt=<secretfile> [--dump-manifest] [--consume] <INPUTS>...
+  pog --decrypt=<secretfile> [--dump-manifest] <INPUTS>...
   pog --encrypt=<keyfile> --dump-manifest-index <INPUTS>...
   pog (-h | --help)
 
@@ -17,7 +17,6 @@ Examples:
   pog --encrypt=pki.encrypt /path/to/file* --save-to=s3://mybucket,b2://myotherbucket
   pog --encrypt=pki.encrypt --dump-manifest-index 2019-*
   pog --decrypt=pki.decrypt s3://mybucket/2019-10-31T12:34:56.012345.mfn
-  pog --decrypt=pki.decrypt --consume 2019-10-31T12:34:56.012345.mfn
 
 Options:
   -h --help                        Show this help.
@@ -26,7 +25,6 @@ Options:
   --chunk-size=<bytes>             When encrypting, split large files into <chunkMB> size parts [default: 100MB].
   --compresslevel=<1-22>           Zstd compression level. [default: 6]
   --concurrency=<1-N>              How many threads to use for uploads. [default: 8]
-  --consume                        Used with decrypt -- after decrypting a blob, delete it from disk to conserve space.
   --decrypt=<secretfile>           Decryption -- <secretfile> contains the (binary) secret key.
   --encrypt=<keyfile>              Encryption -- <keyfile> contains the (binary) "public" key.
   --store-absolute-paths           Store files under their absolute paths (i.e. for backups)
@@ -36,23 +34,24 @@ Options:
 import hmac
 import sys
 from base64 import urlsafe_b64encode
-from collections import ChainMap
+from collections import ChainMap, defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from hashlib import sha256
 from json import dumps, loads
-from os import environ, fdopen, makedirs, remove, utime, path
+from os import environ, fdopen, makedirs, utime, path
 from tempfile import TemporaryDirectory, gettempdir
 
 import zstandard as zstd
+from docopt import docopt
+from humanfriendly import parse_size
 from mcleece.crypto_box import PrivateKey, PublicKey, SealedBox as mcleece_SealedBox
 from nacl.secret import SecretBox as nacl_SecretBox
 from nacl.utils import random as nacl_random
-from docopt import docopt
-from humanfriendly import parse_size
 
-from pog.lib.blob_store import BlobStore, download_list
+from pog.lib.blob_store import BlobStore, data_path
 from pog.lib.local_file_list import local_file_list
+from pog.lib.very_smart_open import very_smart_open
 
 
 MANIFEST_INDEX_BYTES = 4  # up to 4GB
@@ -119,7 +118,7 @@ def prepare_crypto_box(decryption_keyfile=None, encryption_keyfile=None, passphr
         box = mcleece_SealedBox(private_key)
 
     else:
-        raise Exception(f"prepare_crypto_box called without correct params...")
+        raise Exception("prepare_crypto_box called without correct params...")
 
     return secret, box
 
@@ -246,7 +245,8 @@ class Manifest():
 
     def _write_header(self, f, index_box, compressed_index_length):
         # index header
-        payload_length = (compressed_index_length + _box_overhead(index_box)).to_bytes(MANIFEST_INDEX_BYTES, byteorder='big')
+        payload_length = (compressed_index_length + _box_overhead(index_box)).to_bytes(
+            MANIFEST_INDEX_BYTES, byteorder='big')
         index_header = index_box.encrypt(payload_length)
         assert len(index_header) == _box_overhead(index_box) + MANIFEST_INDEX_BYTES
 
@@ -288,7 +288,7 @@ class Manifest():
         return pad_length
 
     def load(self, filename):
-        with open(filename, 'rb') as f:
+        with very_smart_open(filename, 'rb') as f:
             # read header
             pad_length = self._read_header(f)
 
@@ -301,7 +301,9 @@ class Manifest():
             return loads(json_bytes.decode('utf-8'))
 
     def show(self, *inputs, show_filenames=True):
-        for filename in download_list(inputs):
+        for filename in inputs:
+            if not filename.endswith('.mfn'):
+                continue
             print('*** {}:'.format(filename), file=sys.stderr)
             mfn = self.load(filename)
             for og_filename, info in mfn.items():
@@ -325,7 +327,7 @@ class ManifestIndex():
         return payload_length
 
     def load(self, filename):
-        with open(filename, 'rb') as f:
+        with very_smart_open(filename, 'rb') as f:
             # skip first header
             f.read(Manifest.HEADER_SIZE)
             # then read the real deal
@@ -335,7 +337,9 @@ class ManifestIndex():
             return loads(json_bytes.decode('utf-8'))
 
     def show(self, *inputs):
-        for filename in download_list(inputs):
+        for filename in inputs:
+            if not filename.endswith('.mfn'):
+                continue
             print('*** {}:'.format(filename), file=sys.stderr)
             mfn_index = self.load(filename)
             for blob in mfn_index:
@@ -343,47 +347,74 @@ class ManifestIndex():
 
 
 class Decryptor():
-    def __init__(self, crypto_box, consume=False):
+    def __init__(self, crypto_box):
         self.box = crypto_box
-        self.consume = consume
 
     def load_manifest(self, filename):
         return Manifest(self.box).load(filename)
 
     def decrypt_single_blob(self, filename, out):
-        with open(filename, 'rb') as f:
+        with very_smart_open(filename, 'rb') as f:
             data = f.read()
             # two level decrypt?
             out.write(self.box.decrypt(data))  # `out` handles decompression
-        if self.consume:
-            remove(filename)
 
     def dump_manifest(self, *inputs, show_filenames=True):
         Manifest(self.box).show(*inputs, show_filenames=show_filenames)
 
-    def decrypt(self, *inputs):
-        for filename, fs_info, partials in download_list(inputs, extract=True):
-            decompressor = zstd.ZstdDecompressor()
+    def _format_input_list(self, *inputs):
+        # '*' the special "no mfn" key
+        # any non-mfn files will restrict what files we extract
+        files = defaultdict(set)
+        for filename in inputs:
             if filename.endswith('.mfn'):
-                mfn = self.load_manifest(filename)
-                for count, (og_filename, info) in enumerate(mfn.items()):
-                    if partials and og_filename not in partials:
-                        continue
-                    copy_filename = path.normpath('./{}'.format(og_filename))
-                    dir_path = path.dirname(copy_filename)
-                    if dir_path:
-                        makedirs(dir_path, exist_ok=True)
-                    with open(copy_filename, 'wb') as f, decompressor.stream_writer(f) as decompress_out:
-                        for blob in download_list(info['blobs'], fs_info=fs_info):
-                            self.decrypt_single_blob(blob, out=decompress_out)
-                    utime(copy_filename, times=(info['atime'], info['mtime']))
-                    # print progress to stdout
-                    _print_progress(count+1, len(mfn), og_filename)
-                if self.consume:
-                    remove(filename)
-            else:
-                with decompressor.stream_writer(_stdout()) as decompress_out:
-                    self.decrypt_single_blob(filename, out=decompress_out)
+                files[filename] = {}
+                continue
+            try:
+                mfn_file = list(files)[-1]
+            except IndexError:
+                mfn_file = '*'
+            files[mfn_file].add(filename)
+
+        # if we provided a manifest, assume files listed prior to it also belong to it
+        if '*' in files and len(files) > 1:
+            files[list(files)[1]].update(files['*'])
+            del files['*']
+
+        return files
+
+    def decrypt(self, *inputs):
+        # if inputs contains a manifest, use it (and insert files inline?)
+        # what about those provided in inputs tho?
+        # can we slam them into the list?
+        decompressor = zstd.ZstdDecompressor()
+        files = self._format_input_list(*inputs)  # creates a {mfn: [f1, f2]} dict of files
+        for mfn_file in files:
+            # special case: no mfn, these are blobs, pray blobs are in correct order, decrypt and dump to stdout
+            if mfn_file == '*':
+                for filename in files[mfn_file]:
+                    with decompressor.stream_writer(_stdout()) as decompress_out:
+                        self.decrypt_single_blob(filename, out=decompress_out)
+                continue
+
+            # normal case. {mfn: [f1, f2]}
+            mfn = self.load_manifest(mfn_file)
+            mfn_root = path.dirname(mfn_file)
+            for count, (og_filename, info) in enumerate(mfn.items()):
+                if files[mfn_file] and og_filename not in files[mfn_file]:
+                    continue  # skip it!
+                # currently always extract inside cwd
+                copy_filename = path.normpath('./{}'.format(og_filename))
+                dir_path = path.dirname(copy_filename)
+                if dir_path:
+                    makedirs(dir_path, exist_ok=True)
+                with open(copy_filename, 'wb') as f, decompressor.stream_writer(f) as decompress_out:
+                    for blob_name in info['blobs']:
+                        blob_path = path.join(mfn_root, data_path(blob_name))
+                        self.decrypt_single_blob(blob_path, out=decompress_out)
+                utime(copy_filename, times=(info['atime'], info['mtime']))
+                # print progress to stdout
+                _print_progress(count+1, len(mfn), og_filename)
 
 
 def main():
@@ -404,8 +435,7 @@ def main():
         args.get('--decrypt')
     )
     if decrypt:
-        consume = args.get('--consume')
-        d = Decryptor(crypto_box, consume)
+        d = Decryptor(crypto_box)
         if args.get('--dump-manifest'):
             d.dump_manifest(*args['<INPUTS>'])
         else:

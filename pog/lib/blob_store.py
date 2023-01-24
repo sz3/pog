@@ -1,25 +1,12 @@
 from os import path
 from shutil import copyfile
 from subprocess import check_output
-from tempfile import NamedTemporaryFile
-from urllib.parse import urlparse
 
-from collections import defaultdict
 from pog.fs.pogfs import get_cloud_fs
 
 
-def _data_path(blob_name):
+def data_path(blob_name):
     return 'data/{}/{}'.format(blob_name[0:2], blob_name)
-
-
-def _flatten(*args):
-    flatter = []
-    for elem in args:
-        if isinstance(elem, list) or isinstance(elem, tuple):
-            flatter += elem
-        else:
-            flatter.append(elem)
-    return flatter
 
 
 def parse_storage_str(paths=None):
@@ -38,86 +25,6 @@ def parse_storage_str(paths=None):
             d = (target, bucket.rstrip('/'))
         dests.append(d)
     return dests
-
-
-class download_list():
-    def __init__(self, *args, **kwargs):
-        self.filenames = _flatten(*args)
-        self.fs_info = kwargs.get('fs_info', [])
-        self.partials = {}
-
-        # `extract` mode does two things:
-        # 1. iterator returns a tuple with fs_info in it
-        # 2. consumes non-mfn arguments and returns them with the preceding mfn, if there is one
-        self.extract = kwargs.get('extract', False)
-        if self.extract:
-            self.filenames, self.partials = self._determine_partials(self.filenames)
-
-    def _determine_partials(self, filenames):
-        if not self.extract:
-            return
-
-        partials = defaultdict(set)
-        current_mfn = None
-        for f in list(filenames):
-            if f.endswith('.mfn'):
-                current_mfn = f
-                continue
-            if not current_mfn:
-                continue
-            partials[current_mfn].add(f)
-            filenames.remove(f)
-        return filenames, dict(partials)
-
-    def _find_local(self, filename):
-        # check in a few places
-        for fn in [filename, _data_path(filename)]:
-            if path.exists(fn):
-                return fn
-        # give up
-        return filename
-
-    def __iter__(self):
-        self.it = iter(self.filenames)
-        self.tempfile = None
-        return self
-
-    def __next__(self):
-        if self.tempfile:
-            with self.tempfile:
-                pass
-        try:
-            filename = next(self.it)
-            partials = self.partials.get(filename)
-
-            filename, self.tempfile, fs_info = self._download_if_necessary(filename, *self.fs_info)
-            return filename if not self.extract else (filename, fs_info, partials)
-        except StopIteration:
-            raise
-
-    def _download_if_necessary(self, filename, target=None, bucket=None):
-        parsed = urlparse(filename)
-        target = target or parsed.scheme
-        bucket = bucket or parsed.netloc
-        if not target:  # just a filename
-            return self._find_local(filename), None, []
-
-        try:
-            fs = get_cloud_fs(target)(bucket)
-        except TypeError:  # not a real fs, treat it as a local filename
-            return self._find_local(filename), None, []
-
-        is_mfn = filename.endswith('.mfn')
-        suffix = '.mfn' if is_mfn else ''
-
-        remote_path = parsed.path.strip('/')
-        if not is_mfn:
-            remote_path = _data_path(remote_path)
-
-        f = NamedTemporaryFile(suffix=suffix)
-        local_path = f.name
-        fs.download_file(local_path, remote_path)
-        return local_path, f, (target, bucket)
 
 
 class BlobStore():
@@ -141,5 +48,5 @@ class BlobStore():
                 fs.upload_file(temp_path, name)
 
     def save_blob(self, blob_name, temp_path):
-        full_name = _data_path(blob_name)
+        full_name = data_path(blob_name)
         self.save(full_name, temp_path)

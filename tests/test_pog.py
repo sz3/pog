@@ -8,7 +8,7 @@ from unittest import TestCase, skipUnless
 
 from .helpers import TestDirMixin, POG_ROOT, SAMPLE_TIME1, SAMPLE_TIME2
 from pog.fs.localfs import localfs
-from pog.lib.blob_store import _data_path
+from pog.lib.blob_store import data_path
 
 
 SAMPLE_TEXT = b'''069:15:22 Lovell (onboard): Hey, I don't see a thing. Where are we?
@@ -81,13 +81,15 @@ class MainTest(TestDirMixin, TestCase):
         paths = listdir(self.working_dir.name)
         self.assertCountEqual(paths, [path.basename(manifest_name)] + blobs)
 
-        # decrypt, consuming our encrypted inputs
-        dec = self.run_command(self.decryption_flag, '--consume', manifest_name)
+        # decrypt
+        dec = self.run_command(self.decryption_flag, manifest_name)
         self.assertEqual(dec, ['*** 1/2: another_sample.txt', '*** 2/2: tiny_sample.txt'])
 
         # validate the directory looks like we expect it to
         paths = listdir(self.working_dir.name)
-        self.assertCountEqual(paths, ['another_sample.txt', 'tiny_sample.txt'])
+        self.assertCountEqual(paths, ['another_sample.txt', 'tiny_sample.txt',
+                                      self.another_sample_blobname, self.tiny_sample_blobname,
+                                      path.basename(manifest_name)])
 
         # read the decrypted files
         tiny_sample = path.join(self.working_dir.name, 'tiny_sample.txt')
@@ -126,8 +128,8 @@ class MainTest(TestDirMixin, TestCase):
             show_mfn, ['* another_sample.txt:', blobs[0], '* tiny_sample.txt:', blobs[1]]
         )
 
-        # decrypt, consuming our encrypted inputs
-        dec = self.run_command(self.decryption_flag, '--consume', manifest_name)
+        # decrypt
+        dec = self.run_command(self.decryption_flag, manifest_name)
         self.assertEqual(dec, ['*** 1/2: another_sample.txt', '*** 2/2: tiny_sample.txt'])
 
         # read the decrypted files
@@ -180,7 +182,7 @@ class MainTest(TestDirMixin, TestCase):
         for filename in [self.consistency_blobname, self.consistency_mfn]:
             copyfile(f'{POG_ROOT}/tests/samples/{filename}', f'{self.working_dir.name}/{filename}')
 
-        dec = self.run_command(self.decryption_flag, '--consume', self.consistency_mfn)
+        dec = self.run_command(self.decryption_flag, self.consistency_mfn)
         self.assertEqual(dec, ['*** 1/1: 8.txt'])
 
         # read the decrypted file
@@ -205,7 +207,7 @@ class MainTest(TestDirMixin, TestCase):
         # flex the download_list() logic in various ways. First, we'll create a test pogfs data structure in our working_dir
         fs = localfs(root=self.working_dir.name)
         fs.upload_file(f'{POG_ROOT}/tests/samples/{self.consistency_mfn}', self.consistency_mfn)
-        fs.upload_file(f'{POG_ROOT}/tests/samples/{self.consistency_blobname}', _data_path(self.consistency_blobname))
+        fs.upload_file(f'{POG_ROOT}/tests/samples/{self.consistency_blobname}', data_path(self.consistency_blobname))
 
         # --dump-manifest
         show_mfn = self.run_command(self.decryption_flag, '--dump-manifest', f'local:///{self.consistency_mfn}')
@@ -249,7 +251,7 @@ class MainTest(TestDirMixin, TestCase):
         )
 
         # decrypt, consuming our encrypted inputs
-        dec = self.run_command(self.decryption_flag, '--consume', manifest_name)
+        dec = self.run_command(self.decryption_flag, manifest_name)
         self.assertEqual(dec, [
             '*** 1/2: {}'.format(self.another_sample),
             '*** 2/2: {}'.format(self.tiny_sample),
@@ -354,14 +356,13 @@ class BigFileTest(TestDirMixin, TestCase):
                                           '--dump-manifest-index', manifest_name)
         self.assertEqual(show_mfn_index, sorted(blobs))
 
-        # decrypt, consuming our encrypted inputs
-        dec = self.run_command(f'--decrypt={POG_ROOT}/tests/samples/only_for_testing.decrypt', '--consume',
-                               manifest_name)
+        # decrypt
+        dec = self.run_command(f'--decrypt={POG_ROOT}/tests/samples/only_for_testing.decrypt', manifest_name)
         self.assertEqual(dec, ['*** 1/1: big_sample.bin'])
 
         # check that the directory looks good
         paths = listdir(self.working_dir.name)
-        self.assertEqual(paths, ['big_sample.bin'])
+        self.assertIn('big_sample.bin', paths)
 
         # check that the output file is what we expect
         filename = path.join(self.working_dir.name, 'big_sample.bin')
@@ -390,16 +391,13 @@ class BigFileTest(TestDirMixin, TestCase):
                                     '--dump-manifest', manifest_name)
         self.assertEqual(show_mfn, ['* big_sample.bin:'] + blobs)
 
-        # check the
-
-        # decrypt, consuming our encrypted inputs
-        dec = self.run_command(f'--decrypt={POG_ROOT}/tests/samples/only_for_testing.decrypt', '--consume',
-                               manifest_name)
+        # decrypt
+        dec = self.run_command(f'--decrypt={POG_ROOT}/tests/samples/only_for_testing.decrypt', manifest_name)
         self.assertEqual(dec, ['*** 1/1: big_sample.bin'])
 
         # check that the directory looks good
         paths = listdir(self.working_dir.name)
-        self.assertEqual(paths, ['big_sample.bin'])
+        self.assertIn('big_sample.bin', paths)
 
         # check that the output file is what we expect
         filename = path.join(self.working_dir.name, 'big_sample.bin')
